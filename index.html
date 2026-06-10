@@ -232,6 +232,82 @@
 
     .pill label:hover { border-color: var(--rose); background: var(--rose-pale); }
 
+    /* ─── 2-COL FIELD ROW ─── */
+    .field-row-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+
+    /* ─── IMC RESULT ─── */
+    .imc-result {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 16px;
+      background: linear-gradient(135deg, var(--rose-pale), rgba(232,164,184,0.12));
+      border: 1.5px solid var(--rose-border);
+      border-radius: var(--radius-sm);
+      flex-wrap: wrap;
+    }
+
+    .imc-label {
+      font-size: 0.78rem;
+      color: var(--gray-500);
+    }
+
+    .imc-value {
+      font-size: 0.92rem;
+      font-weight: 600;
+      color: var(--rose-deep);
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 1.1rem;
+    }
+
+    .imc-class {
+      font-size: 0.75rem;
+      color: var(--gray-700);
+      background: var(--rose-light);
+      padding: 3px 10px;
+      border-radius: 99px;
+    }
+
+    /* ─── PRODUTOS BANNER ─── */
+    .produtos-banner {
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+      padding: 16px 18px;
+      background: linear-gradient(135deg, rgba(232,164,184,0.14), rgba(200,114,142,0.08));
+      border: 1.5px solid var(--rose-border);
+      border-radius: var(--radius-sm);
+    }
+
+    .produtos-banner-icon {
+      font-size: 1.6rem;
+      line-height: 1;
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+
+    .produtos-banner-text {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .produtos-banner-text strong {
+      font-size: 0.84rem;
+      font-weight: 500;
+      color: var(--gray-900);
+      line-height: 1.45;
+    }
+
+    .produtos-banner-text span {
+      font-size: 0.75rem;
+      color: var(--gray-500);
+    }
+
     /* ─── CONDITIONAL FIELD ─── */
     .conditional {
       overflow: hidden;
@@ -488,6 +564,22 @@
             <input type="tel" id="telefone" placeholder="(85) 9 0000-0000" />
           </div>
 
+          <div class="field-row-2">
+            <div class="field">
+              <label>Peso (kg)</label>
+              <input type="number" id="peso" placeholder="Ex: 65" min="30" max="300" step="0.1" oninput="calcIMC()" />
+            </div>
+            <div class="field">
+              <label>Altura (cm)</label>
+              <input type="number" id="altura" placeholder="Ex: 165" min="100" max="250" oninput="calcIMC()" />
+            </div>
+          </div>
+          <div class="imc-result" id="imcResult" style="display:none;">
+            <span class="imc-label">IMC calculado:</span>
+            <span class="imc-value" id="imcValue"></span>
+            <span class="imc-class" id="imcClass"></span>
+          </div>
+
         </div>
         <div class="btn-row">
           <button class="btn-next" onclick="goTo(2)">
@@ -587,6 +679,41 @@
             </div>
           </div>
 
+          <div class="field">
+            <label>Como está sua frequência urinária?</label>
+            <div class="pills">
+              <label class="pill"><input type="radio" name="freqUrinaria" value="Ruim" /><label>Ruim</label></label>
+              <label class="pill"><input type="radio" name="freqUrinaria" value="Média" /><label>Média</label></label>
+              <label class="pill"><input type="radio" name="freqUrinaria" value="Boa" /><label>Boa</label></label>
+            </div>
+          </div>
+
+          <div class="field">
+            <label>Você bebe muita ou pouca água?</label>
+            <div class="pills">
+              <label class="pill"><input type="radio" name="consumoAgua" value="Muita" /><label>Muita</label></label>
+              <label class="pill"><input type="radio" name="consumoAgua" value="Média" /><label>Média</label></label>
+              <label class="pill"><input type="radio" name="consumoAgua" value="Pouca" /><label>Pouca</label></label>
+            </div>
+          </div>
+
+          <div class="field produtos-field">
+            <div class="produtos-banner">
+              <div class="produtos-banner-icon">💧</div>
+              <div class="produtos-banner-text">
+                <strong>Você gostaria de conhecer alguns produtos que vão te ajudar no seu estágio de retenção hídrica?</strong>
+                <span>Nossa consultora pode te indicar soluções personalizadas.</span>
+              </div>
+            </div>
+            <div class="pills" style="margin-top: 12px;">
+              <label class="pill"><input type="radio" name="interesseProdutos" value="Sim" onchange="toggleConditional('condProdutos', this)" /><label>Sim, quero conhecer!</label></label>
+              <label class="pill"><input type="radio" name="interesseProdutos" value="Não" onchange="toggleConditional('condProdutos', null)" /><label>Não, obrigada</label></label>
+            </div>
+            <div class="conditional" id="condProdutos">
+              <div class="parabens-msg" style="font-size: 0.95rem;">Ótimo! Nossa consultora vai te apresentar opções personalizadas para você 💜</div>
+            </div>
+          </div>
+
         </div>
         <div class="btn-row">
           <button class="btn-back" onclick="goTo(2)">
@@ -671,6 +798,33 @@
 <div class="toast" id="toast"></div>
 
 <script>
+  /* ─── IMC CALCULATOR ─── */
+  function calcIMC() {
+    const peso = parseFloat(document.getElementById('peso').value);
+    const altura = parseFloat(document.getElementById('altura').value);
+    const result = document.getElementById('imcResult');
+    const imcVal = document.getElementById('imcValue');
+    const imcCls = document.getElementById('imcClass');
+
+    if (peso > 0 && altura > 0) {
+      const h = altura / 100;
+      const imc = (peso / (h * h)).toFixed(1);
+      let cls = '';
+      if (imc < 18.5)      cls = 'Abaixo do peso';
+      else if (imc < 25)   cls = 'Peso normal';
+      else if (imc < 30)   cls = 'Sobrepeso';
+      else if (imc < 35)   cls = 'Obesidade I';
+      else if (imc < 40)   cls = 'Obesidade II';
+      else                 cls = 'Obesidade III';
+
+      imcVal.textContent = imc;
+      imcCls.textContent = cls;
+      result.style.display = 'flex';
+    } else {
+      result.style.display = 'none';
+    }
+  }
+
   /* ─── PILL FIX: nested label workaround ─── */
   document.querySelectorAll('.pill').forEach(pill => {
     const input = pill.querySelector('input');
@@ -772,6 +926,10 @@
     const temProblema = getRadio('temProblema');
     const temMed = getRadio('temMed');
     const cirurgia = getRadio('cirurgia');
+    const peso = getVal('peso');
+    const altura = getVal('altura');
+    const imc = document.getElementById('imcValue').textContent;
+    const imcClass = document.getElementById('imcClass').textContent;
 
     const data = [
       {
@@ -780,7 +938,9 @@
           ['Nome completo', getVal('nome')],
           ['Idade', getVal('idade')],
           ['Telefone / WhatsApp', getVal('telefone')],
-
+          ...(peso !== '—' ? [['Peso', peso + ' kg']] : []),
+          ...(altura !== '—' ? [['Altura', altura + ' cm']] : []),
+          ...(imc ? [['IMC', imc + (imcClass ? ' — ' + imcClass : '')]] : []),
         ]
       },
       {
@@ -801,6 +961,9 @@
           ['Alergia a cosméticos', getRadio('temAlergia')],
           ...(getRadio('temAlergia') === 'Sim' ? [['Qual alergia', getVal('qualAlergia')]] : []),
           ['Gestante', getRadio('gravida')],
+          ['Frequência urinária', getRadio('freqUrinaria')],
+          ['Consumo de água', getRadio('consumoAgua')],
+          ['Interesse em produtos', getRadio('interesseProdutos')],
         ]
       },
       {
@@ -832,6 +995,10 @@
     const temProblema = getRadio('temProblema');
     const temMed = getRadio('temMed');
     const cirurgia = getRadio('cirurgia');
+    const peso = getVal('peso');
+    const altura = getVal('altura');
+    const imc = document.getElementById('imcValue').textContent;
+    const imcClass = document.getElementById('imcClass').textContent;
 
     const lines = [
       '🌸 *Anamnese — Viva Mais Bela*',
@@ -840,7 +1007,9 @@
       `Nome: ${getVal('nome')}`,
       `Idade: ${getVal('idade')}`,
       `Telefone: ${getVal('telefone')}`,
-
+      ...(peso !== '—' ? [`Peso: ${peso} kg`] : []),
+      ...(altura !== '—' ? [`Altura: ${altura} cm`] : []),
+      ...(imc ? [`IMC: ${imc}${imcClass ? ' — ' + imcClass : ''}`] : []),
       '',
       '*🎯 Objetivo do Atendimento*',
       `Objetivo: ${getVal('objetivo')}`,
@@ -855,6 +1024,9 @@
       `Alergia a cosméticos: ${getRadio('temAlergia')}`,
       ...(getRadio('temAlergia') === 'Sim' ? [`Qual: ${getVal('qualAlergia')}`] : []),
       `Gestante: ${getRadio('gravida')}`,
+      `Frequência urinária: ${getRadio('freqUrinaria')}`,
+      `Consumo de água: ${getRadio('consumoAgua')}`,
+      `Interesse em produtos: ${getRadio('interesseProdutos')}`,
       '',
       '*⚠️ Contraindicações*',
       `Febre/infecção/trombose: ${getRadio('contraind')}`,
@@ -865,7 +1037,7 @@
     ];
 
     // ← Troque pelo número do WhatsApp do spa (somente dígitos, com DDI)
-    const phone = '5571991728256';
+    const phone = '5571991158054';
     const msg = encodeURIComponent(lines.join('\n'));
     window.open(`https://wa.me/${phone}?text=${msg}`, '_blank');
   }
