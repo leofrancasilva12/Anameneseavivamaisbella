@@ -676,6 +676,10 @@
             </div>
             <div class="conditional" id="condGravida">
               <div class="parabens-msg">Meus Parabéns 😍</div>
+              <div class="field" style="margin-top: 12px;">
+                <label>Quantos meses de gestação?</label>
+                <input type="number" id="mesesGestacao" placeholder="Ex: 3" min="1" max="9" />
+              </div>
             </div>
           </div>
 
@@ -701,7 +705,7 @@
             <div class="produtos-banner">
               <div class="produtos-banner-icon">💧</div>
               <div class="produtos-banner-text">
-                <strong>Você gostaria de conhecer alguns produtos que vão te ajudar no seu estágio de retenção hídrica?</strong>
+                <strong>Você gostaria de conhecer alguns produtos que vão te ajudar no seu estágio de retenção hídrica e sobrepeso?</strong>
                 <span>Nossa consultora pode te indicar soluções personalizadas.</span>
               </div>
             </div>
@@ -961,6 +965,7 @@
           ['Alergia a cosméticos', getRadio('temAlergia')],
           ...(getRadio('temAlergia') === 'Sim' ? [['Qual alergia', getVal('qualAlergia')]] : []),
           ['Gestante', getRadio('gravida')],
+          ...(getRadio('gravida') === 'Sim' ? [['Meses de gestação', getVal('mesesGestacao')]] : []),
           ['Frequência urinária', getRadio('freqUrinaria')],
           ['Consumo de água', getRadio('consumoAgua')],
           ['Interesse em produtos', getRadio('interesseProdutos')],
@@ -1024,6 +1029,7 @@
       `Alergia a cosméticos: ${getRadio('temAlergia')}`,
       ...(getRadio('temAlergia') === 'Sim' ? [`Qual: ${getVal('qualAlergia')}`] : []),
       `Gestante: ${getRadio('gravida')}`,
+      ...(getRadio('gravida') === 'Sim' ? [`Meses de gestação: ${getVal('mesesGestacao')}`] : []),
       `Frequência urinária: ${getRadio('freqUrinaria')}`,
       `Consumo de água: ${getRadio('consumoAgua')}`,
       `Interesse em produtos: ${getRadio('interesseProdutos')}`,
