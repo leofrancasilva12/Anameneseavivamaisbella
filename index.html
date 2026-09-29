@@ -15,17 +15,18 @@
   <!-- HEADER -->
   <header>
     <img src="img/logo-transparent.png" alt="Viva Mais Bella" class="logo-img" />
-    <p>Ficha de Anamnese — Drenagem Linfática</p>
+    <p>Ficha de Anamnese</p>
+    <p class="header-servicos" id="headerServicos"></p>
   </header>
 
   <!-- PROGRESS -->
   <div class="progress-wrap">
     <div class="progress-meta">
-      <span class="progress-label" id="sectionName">Dados Pessoais</span>
-      <span class="progress-count" id="stepCount">1 de 4</span>
+      <span class="progress-label" id="sectionName">Serviços</span>
+      <span class="progress-count" id="stepCount">1 de 5</span>
     </div>
     <div class="progress-track">
-      <div class="progress-fill" id="progressFill" style="width:25%"></div>
+      <div class="progress-fill" id="progressFill" style="width:20%"></div>
     </div>
   </div>
 
@@ -33,9 +34,23 @@
   <main>
     <div class="card" id="formCard">
 
-      <!-- STEP 1 — Dados Pessoais -->
+      <!-- STEP 1 — Serviços -->
       <div class="step active" id="step1">
         <span class="section-tag">Seção 01</span>
+        <h2>Quais serviços você vai realizar?</h2>
+        <p class="step-hint">Você pode escolher mais de um.</p>
+        <div class="servicos-grid" id="servicosGrid"></div>
+        <div class="btn-row">
+          <button class="btn-next" onclick="goTo(2)">
+            Continuar
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- STEP 2 — Dados Pessoais -->
+      <div class="step" id="step2">
+        <span class="section-tag">Seção 02</span>
         <h2>Dados Pessoais</h2>
         <div class="fields">
           <div class="field">
@@ -69,42 +84,6 @@
 
         </div>
         <div class="btn-row">
-          <button class="btn-next" onclick="goTo(2)">
-            Continuar
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
-          </button>
-        </div>
-      </div>
-
-      <!-- STEP 2 — Objetivo -->
-      <div class="step" id="step2">
-        <span class="section-tag">Seção 02</span>
-        <h2>Objetivo do Atendimento</h2>
-        <div class="fields">
-          <div class="field">
-            <label>Qual seu principal objetivo com a drenagem linfática? <span class="req">*</span></label>
-            <textarea id="objetivo" placeholder="Descreva seu objetivo..."></textarea>
-          </div>
-          <div class="field">
-            <label>Em qual região você sente mais inchaço ou desconforto?</label>
-            <div class="pills" id="regiaoGroup">
-              <label class="pill"><input type="checkbox" name="regiao" value="Abdome" /><label>Abdome</label></label>
-              <label class="pill"><input type="checkbox" name="regiao" value="Pernas" /><label>Pernas</label></label>
-              <label class="pill"><input type="checkbox" name="regiao" value="Braços" /><label>Braços</label></label>
-              <label class="pill"><input type="checkbox" name="regiao" value="Costas" /><label>Costas</label></label>
-              <label class="pill"><input type="checkbox" name="regiao" value="Rosto" /><label>Rosto</label></label>
-              <label class="pill"><input type="checkbox" name="regiao" value="Outro" /><label>Outro</label></label>
-            </div>
-          </div>
-          <div class="field">
-            <label>Já fez drenagem linfática antes?</label>
-            <div class="pills">
-              <label class="pill"><input type="radio" name="fezentem" value="Sim" /><label>Sim</label></label>
-              <label class="pill"><input type="radio" name="fezentem" value="Não" /><label>Não</label></label>
-            </div>
-          </div>
-        </div>
-        <div class="btn-row">
           <button class="btn-back" onclick="goTo(1)">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
             Voltar
@@ -116,95 +95,16 @@
         </div>
       </div>
 
-      <!-- STEP 3 — Saúde Básica -->
+      <!-- STEP 3 — Objetivo -->
       <div class="step" id="step3">
         <span class="section-tag">Seção 03</span>
-        <h2>Saúde Básica</h2>
+        <h2>Objetivo do Atendimento</h2>
         <div class="fields">
-
           <div class="field">
-            <label>Você tem algum problema de saúde?</label>
-            <div class="pills">
-              <label class="pill"><input type="radio" name="temProblema" value="Sim" onchange="toggleConditional('condProblema', this)" /><label>Sim</label></label>
-              <label class="pill"><input type="radio" name="temProblema" value="Não" onchange="toggleConditional('condProblema', null)" /><label>Não</label></label>
-            </div>
-            <div class="conditional" id="condProblema">
-              <textarea id="qualProblema" placeholder="Descreva o problema de saúde..."></textarea>
-            </div>
+            <label>Qual seu principal objetivo com o atendimento? <span class="req">*</span></label>
+            <textarea id="objetivo" placeholder="Descreva seu objetivo..."></textarea>
           </div>
-
-          <div class="field">
-            <label>Faz uso contínuo de medicamento?</label>
-            <div class="pills">
-              <label class="pill"><input type="radio" name="temMed" value="Sim" onchange="toggleConditional('condMed', this)" /><label>Sim</label></label>
-              <label class="pill"><input type="radio" name="temMed" value="Não" onchange="toggleConditional('condMed', null)" /><label>Não</label></label>
-            </div>
-            <div class="conditional" id="condMed">
-              <textarea id="qualMed" placeholder="Qual medicamento?"></textarea>
-            </div>
-          </div>
-
-          <div class="field">
-            <label>Tem alergia a cremes, óleos ou cosméticos?</label>
-            <div class="pills">
-              <label class="pill"><input type="radio" name="temAlergia" value="Sim" onchange="toggleConditional('condAlergia', this)" /><label>Sim</label></label>
-              <label class="pill"><input type="radio" name="temAlergia" value="Não" onchange="toggleConditional('condAlergia', null)" /><label>Não</label></label>
-            </div>
-            <div class="conditional" id="condAlergia">
-              <textarea id="qualAlergia" placeholder="Qual creme, óleo ou cosmético?"></textarea>
-            </div>
-          </div>
-
-          <div class="field">
-            <label>Está grávida?</label>
-            <div class="pills">
-              <label class="pill"><input type="radio" name="gravida" value="Sim" onchange="toggleConditional('condGravida', this)" /><label>Sim</label></label>
-              <label class="pill"><input type="radio" name="gravida" value="Não" onchange="toggleConditional('condGravida', null)" /><label>Não</label></label>
-            </div>
-            <div class="conditional" id="condGravida">
-              <div class="parabens-msg">Meus Parabéns 😍</div>
-              <div class="field" style="margin-top: 12px;">
-                <label>Quantos meses de gestação?</label>
-                <input type="number" id="mesesGestacao" placeholder="Ex: 3" min="1" max="9" />
-              </div>
-            </div>
-          </div>
-
-          <div class="field">
-            <label>Como está sua frequência urinária?</label>
-            <div class="pills">
-              <label class="pill"><input type="radio" name="freqUrinaria" value="Ruim" /><label>Ruim</label></label>
-              <label class="pill"><input type="radio" name="freqUrinaria" value="Média" /><label>Média</label></label>
-              <label class="pill"><input type="radio" name="freqUrinaria" value="Boa" /><label>Boa</label></label>
-            </div>
-          </div>
-
-          <div class="field">
-            <label>Você bebe muita ou pouca água?</label>
-            <div class="pills">
-              <label class="pill"><input type="radio" name="consumoAgua" value="Muita" /><label>Muita</label></label>
-              <label class="pill"><input type="radio" name="consumoAgua" value="Média" /><label>Média</label></label>
-              <label class="pill"><input type="radio" name="consumoAgua" value="Pouca" /><label>Pouca</label></label>
-            </div>
-          </div>
-
-          <div class="field produtos-field">
-            <div class="produtos-banner">
-              <div class="produtos-banner-icon">💧</div>
-              <div class="produtos-banner-text">
-                <strong>Você gostaria de conhecer alguns produtos que vão te ajudar no seu estágio de retenção hídrica e sobrepeso?</strong>
-                <span>Nossa consultora pode te indicar soluções personalizadas.</span>
-              </div>
-            </div>
-            <div class="pills" style="margin-top: 12px;">
-              <label class="pill"><input type="radio" name="interesseProdutos" value="Sim" onchange="toggleConditional('condProdutos', this)" /><label>Sim, quero conhecer!</label></label>
-              <label class="pill"><input type="radio" name="interesseProdutos" value="Não" onchange="toggleConditional('condProdutos', null)" /><label>Não, obrigada</label></label>
-            </div>
-            <div class="conditional" id="condProdutos">
-              <div class="parabens-msg" style="font-size: 0.95rem; font-family: 'DM Sans', sans-serif; font-style: normal; font-weight: 500; color: #1a1a1a;">Ótimo! Nossa consultora vai te apresentar opções personalizadas para você 💜</div>
-            </div>
-          </div>
-
+          <div id="objetivoServicos" class="fields"></div>
         </div>
         <div class="btn-row">
           <button class="btn-back" onclick="goTo(2)">
@@ -218,34 +118,56 @@
         </div>
       </div>
 
-      <!-- STEP 4 — Contraindicações -->
+      <!-- STEP 4 — Saúde -->
       <div class="step" id="step4">
         <span class="section-tag">Seção 04</span>
-        <h2>Contraindicações</h2>
+        <h2>Saúde</h2>
         <div class="fields">
+          <div id="saudePerguntas" class="fields"></div>
 
-          <div class="field">
-            <label>Você está com febre, infecção, inflamação, trombose ou liberação médica pendente?</label>
-            <div class="pills">
-              <label class="pill"><input type="radio" name="contraind" value="Sim" /><label>Sim</label></label>
-              <label class="pill"><input type="radio" name="contraind" value="Não" /><label>Não</label></label>
+          <div class="field produtos-field" id="produtosField" style="display:none;">
+            <div class="produtos-banner">
+              <div class="produtos-banner-icon">💧</div>
+              <div class="produtos-banner-text">
+                <strong>Você gostaria de conhecer alguns produtos que vão te ajudar no seu estágio de retenção hídrica e sobrepeso?</strong>
+                <span>Nossa consultora pode te indicar soluções personalizadas.</span>
+              </div>
+            </div>
+            <div class="pills" style="margin-top: 12px;">
+              <label class="pill"><input type="radio" name="interesseProdutos" value="Sim" data-cond="condProdutos" /><label>Sim, quero conhecer!</label></label>
+              <label class="pill"><input type="radio" name="interesseProdutos" value="Não" data-cond="condProdutos" /><label>Não, obrigada</label></label>
+            </div>
+            <div class="conditional" id="condProdutos">
+              <div class="parabens-msg" style="font-size: 0.95rem; font-family: 'DM Sans', sans-serif; font-style: normal; font-weight: 500; color: #1a1a1a;">Ótimo! Nossa consultora vai te apresentar opções personalizadas para você 💜</div>
             </div>
           </div>
-
-          <div class="field">
-            <label>Já fez cirurgia recente?</label>
-            <div class="pills">
-              <label class="pill"><input type="radio" name="cirurgia" value="Sim" onchange="toggleConditional('condCirurgia', this)" /><label>Sim</label></label>
-              <label class="pill"><input type="radio" name="cirurgia" value="Não" onchange="toggleConditional('condCirurgia', null)" /><label>Não</label></label>
-            </div>
-            <div class="conditional" id="condCirurgia">
-              <textarea id="qualCirurgia" placeholder="Qual cirurgia e quando foi realizada?"></textarea>
-            </div>
-          </div>
-
         </div>
         <div class="btn-row">
           <button class="btn-back" onclick="goTo(3)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+            Voltar
+          </button>
+          <button class="btn-next" onclick="goTo(5)">
+            Continuar
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- STEP 5 — Contraindicações -->
+      <div class="step" id="step5">
+        <span class="section-tag">Seção 05</span>
+        <h2>Contraindicações</h2>
+        <div class="fields">
+          <div id="contraPerguntas" class="fields"></div>
+
+          <label class="consent">
+            <input type="checkbox" id="consentimento" name="consentimento" value="Aceito" />
+            <span>Declaro que as informações prestadas nesta ficha são verdadeiras e que não omiti nenhuma condição de saúde. Estou ciente de que devo comunicar à profissional qualquer alteração no meu estado de saúde. <span class="req">*</span></span>
+          </label>
+        </div>
+        <div class="btn-row">
+          <button class="btn-back" onclick="goTo(4)">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
             Voltar
           </button>
@@ -269,7 +191,7 @@
         <div class="summary" id="summaryContent"></div>
 
         <div class="btn-row">
-          <button class="btn-back" onclick="goTo(4)">
+          <button class="btn-back" onclick="goTo(5)">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
             Editar
           </button>
@@ -288,6 +210,7 @@
 <!-- TOAST -->
 <div class="toast" id="toast"></div>
 
+<script src="js/servicos.js"></script>
 <script src="js/script.js"></script>
 </body>
 </html>
