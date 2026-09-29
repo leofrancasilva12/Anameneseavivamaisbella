@@ -298,6 +298,127 @@
       color: var(--gray-500);
     }
 
+    /* ─── SERVIÇOS ─── */
+    header .header-servicos {
+      margin-top: 8px;
+      font-size: 0.74rem;
+      letter-spacing: 0.06em;
+      text-transform: none;
+      color: var(--rose-deep);
+      font-weight: 400;
+    }
+
+    .header-servicos:empty { display: none; }
+
+    .step-hint {
+      margin: -22px 0 24px;
+      font-size: 0.82rem;
+      color: var(--gray-500);
+    }
+
+    .servicos-grid { display: flex; flex-direction: column; gap: 10px; }
+
+    .servico-card {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 16px 18px;
+      border: 1.5px solid var(--rose-border);
+      border-radius: var(--radius);
+      background: var(--off-white);
+      cursor: pointer;
+      user-select: none;
+      transition: all 0.18s;
+    }
+
+    .servico-card:hover { border-color: var(--rose); background: var(--rose-pale); }
+
+    .servico-card input { display: none; }
+
+    .servico-check {
+      width: 22px; height: 22px;
+      flex-shrink: 0;
+      border: 1.5px solid var(--rose-border);
+      border-radius: 50%;
+      background: var(--white);
+      display: flex; align-items: center; justify-content: center;
+      transition: all 0.18s;
+    }
+
+    .servico-check::after {
+      content: '';
+      width: 6px; height: 11px;
+      border: solid white;
+      border-width: 0 2px 2px 0;
+      transform: rotate(45deg) translate(-1px, -1px);
+      opacity: 0;
+    }
+
+    .servico-text { display: flex; flex-direction: column; gap: 2px; }
+
+    .servico-nome {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 1.2rem;
+      font-weight: 500;
+      color: var(--gray-900);
+      line-height: 1.2;
+    }
+
+    .servico-desc { font-size: 0.76rem; color: var(--gray-500); }
+
+    .servico-card.selected {
+      background: linear-gradient(135deg, var(--rose-light), rgba(232,164,184,0.30));
+      border-color: var(--rose);
+      box-shadow: 0 2px 10px rgba(200,114,142,0.15);
+    }
+
+    .servico-card.selected .servico-check {
+      background: linear-gradient(135deg, var(--rose), var(--rose-deep));
+      border-color: var(--rose-deep);
+    }
+
+    .servico-card.selected .servico-check::after { opacity: 1; }
+
+    .servico-card.selected .servico-nome { color: var(--rose-deep); }
+
+    .servico-bloco {
+      border-top: 1px solid var(--rose-border);
+      padding-top: 20px;
+    }
+
+    .servico-bloco-title {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 1.25rem;
+      font-style: italic;
+      color: var(--rose-deep);
+      margin-bottom: 16px;
+    }
+
+    /* ─── TERMO DE CONSENTIMENTO ─── */
+    .consent {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 16px 18px;
+      background: var(--rose-pale);
+      border: 1.5px solid var(--rose-border);
+      border-radius: var(--radius-sm);
+      font-size: 0.8rem;
+      line-height: 1.55;
+      color: var(--gray-700);
+      cursor: pointer;
+    }
+
+    .consent input {
+      flex-shrink: 0;
+      width: 18px; height: 18px;
+      margin-top: 2px;
+      accent-color: var(--rose-deep);
+      cursor: pointer;
+    }
+
+    .consent .req { color: var(--rose-deep); }
+
     /* ─── CONDITIONAL FIELD ─── */
     .conditional {
       overflow: hidden;
