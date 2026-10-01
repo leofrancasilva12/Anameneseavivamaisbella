@@ -750,7 +750,7 @@
     } catch (e) {
       showToast('Não foi possível gerar o PDF. Tente novamente.');
     } finally {
-      btn.disabled = false; label.textContent = 'Enviar ficha em PDF';
+      btn.disabled = false; label.textContent = 'Gerar PDF';
     }
   }
 

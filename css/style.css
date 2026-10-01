@@ -742,4 +742,4 @@
 
     .summary-destaque + .summary-section { border-top: none; }
 
-    .btn-whatsapp:disabled { opacity: 0.7; cursor: wait; }
+    .btn-next:disabled { opacity: 0.7; cursor: wait; }
