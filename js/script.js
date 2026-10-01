@@ -158,8 +158,21 @@
 
   // Perguntas que têm uma opção "Não" (Não, Não fumo, Não bebo...)
   function opcaoNao(q) {
+    if (q.tipo === 'multipla') return q.opcoes.includes('Nenhuma') ? 'Nenhuma' : null;
     if (q.tipo !== 'escolha' && q.tipo !== 'sim-qual') return null;
     return (q.opcoes || ['Sim', 'Não']).find(o => /^Não/.test(o)) || null;
+  }
+
+  // "Nenhuma" desmarca as outras opções, e qualquer outra desmarca "Nenhuma"
+  function exclusividadeNenhuma(el) {
+    if (el.type !== 'checkbox' || el.name === 'servico') return;
+    const grupo = document.querySelectorAll(`input[type="checkbox"][name="${el.name}"]`);
+    if (![...grupo].some(c => c.value === 'Nenhuma')) return;
+    grupo.forEach(c => {
+      if (el.value === 'Nenhuma' ? c !== el : c.value === 'Nenhuma') {
+        if (el.checked) c.checked = false;
+      }
+    });
   }
 
   // Cada página guarda o título e a faixa de perguntas, para a barra de progresso
@@ -189,6 +202,13 @@
 
   function marcarNaoNaPagina(botao) {
     botao.closest('.pagina').querySelectorAll('.fields > .field').forEach(field => {
+      const nenhuma = field.querySelector(':scope > .pills input[type="checkbox"][value="Nenhuma"]');
+      if (nenhuma) {
+        nenhuma.checked = true;
+        exclusividadeNenhuma(nenhuma);
+        field.classList.remove('em-branco');
+        return;
+      }
       const radio = [...field.querySelectorAll(':scope > .pills input[type="radio"]')].find(r => /^Não/.test(r.value));
       if (!radio) return;
       radio.checked = true;
@@ -492,6 +512,10 @@
   // Respostas de risco (perguntas com "alerta: true" respondidas com algo diferente de "Não")
   function pontosDeAtencao() {
     return perguntasAtivas().filter(q => q.alerta).flatMap(q => {
+      if (q.tipo === 'multipla') {
+        const marcados = [...document.querySelectorAll(`input[name="${q.id}"]:checked`)].map(e => e.value).filter(v => v !== 'Nenhuma');
+        return marcados.length ? [[q.resumo, marcados.join(', ')]] : [];
+      }
       const v = getRadio(q.id);
       if (v === '—' || /^Não/.test(v)) return [];
       const detalhe = q.tipo === 'sim-qual' && v === (q.abreEm || 'Sim') ? getVal(q.id + 'Detalhe') : '—';
@@ -578,7 +602,7 @@
       lines.push('', `*${section.icon} ${section.destaque ? section.title.toUpperCase() : section.title}*`);
       section.rows.forEach(([q, a]) => lines.push(a ? `${q}: ${a}` : q));
     });
-    lines.push('', '_Enviado via Anamnese Digital Viva Mais Bela_');
+    lines.push('', '_Enviado via Anamnese Digital Viva Mais Bella_');
 
     // ← Troque pelo número do WhatsApp do spa (somente dígitos, com DDI)
     const phone = '5571991158054';
@@ -737,6 +761,7 @@
     const el = e.target;
     if (el.type === 'radio' && el.dataset.cond) toggleConditional(el.dataset.cond, el);
     if (el.name === 'servico') atualizarCardsServico();
+    exclusividadeNenhuma(el);
     const field = el.closest('.field.em-branco');
     if (field) field.classList.remove('em-branco');
     salvarRascunho();
