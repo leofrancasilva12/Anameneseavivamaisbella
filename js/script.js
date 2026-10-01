@@ -87,16 +87,13 @@
     });
   }
 
-  // Junta as perguntas de uma seção de todos os serviços escolhidos, sem repetir ids
-  function perguntasDaSecao(secao, base = []) {
-    const vistos = new Set();
-    const lista = [];
-    [...base, ...servicosEscolhidos().flatMap(s => s[secao])].forEach(q => {
-      if (vistos.has(q.id)) return;
-      vistos.add(q.id);
-      lista.push(q);
-    });
-    return lista;
+  // Perguntas de cada serviço escolhido; uma pergunta com o mesmo id aparece só no primeiro serviço
+  function blocosDosServicos() {
+    const vistos = new Set(FICHA_GERAL.map(q => q.id));
+    return servicosEscolhidos().map(s => ({
+      servico: s,
+      perguntas: s.perguntas.filter(q => !vistos.has(q.id) && vistos.add(q.id)),
+    })).filter(b => b.perguntas.length);
   }
 
   function mostrarProdutos() {
@@ -128,14 +125,15 @@
         return `<div class="field">${label}${renderPills(q, 'checkbox')}</div>`;
       case 'sim-qual': {
         const cond = 'cond_' + q.id;
+        const opcoes = q.opcoes || ['Sim', 'Não'];
+        const abre = escapeHtml(q.abreEm || 'Sim');
         const dph = q.detalhePlaceholder ? ` placeholder="${escapeHtml(q.detalhePlaceholder)}"` : '';
         const detalhe = q.detalheTipo === 'numero'
           ? `<input type="number" id="${q.id}Detalhe"${dph} />`
           : `<textarea id="${q.id}Detalhe"${dph}></textarea>`;
         return `<div class="field">${label}
-          <div class="pills">
-            <label class="pill"><input type="radio" name="${q.id}" id="${q.id}_sim" value="Sim" data-cond="${cond}" /><label>Sim</label></label>
-            <label class="pill"><input type="radio" name="${q.id}" id="${q.id}_nao" value="Não" data-cond="${cond}" /><label>Não</label></label>
+          <div class="pills">${opcoes.map((op, i) => `
+            <label class="pill"><input type="radio" name="${q.id}" id="${q.id}_${i}" value="${escapeHtml(op)}" data-cond="${cond}" data-abre="${abre}" /><label>${op}</label></label>`).join('')}
           </div>
           <div class="conditional" id="${cond}">
             ${q.mensagem ? `<div class="parabens-msg">${q.mensagem}</div>` : ''}
@@ -149,24 +147,18 @@
     return '';
   }
 
-  // Monta as seções 3, 4 e 5 de acordo com os serviços escolhidos
+  // Monta a ficha geral e as perguntas de cada serviço escolhido
   function montarEtapas() {
     const escolhidos = servicosEscolhidos();
 
-    document.getElementById('objetivoServicos').innerHTML = escolhidos
-      .filter(s => s.objetivo.length)
-      .map(s => `
-        <div class="servico-bloco">
-          <div class="servico-bloco-title">${s.nome}</div>
-          <div class="fields">${s.objetivo.map(renderPergunta).join('')}</div>
-        </div>
-      `).join('');
+    document.getElementById('fichaGeral').innerHTML = FICHA_GERAL.map(renderPergunta).join('');
 
-    document.getElementById('saudePerguntas').innerHTML =
-      perguntasDaSecao('saude', SAUDE_COMUM).map(renderPergunta).join('');
-
-    document.getElementById('contraPerguntas').innerHTML =
-      perguntasDaSecao('contraindicacoes').map(renderPergunta).join('');
+    document.getElementById('perguntasServicos').innerHTML = blocosDosServicos().map(b => `
+      <div class="servico-bloco">
+        <div class="servico-bloco-title">${b.servico.nome}</div>
+        <div class="fields">${b.perguntas.map(renderPergunta).join('')}</div>
+      </div>
+    `).join('');
 
     document.getElementById('produtosField').style.display = mostrarProdutos() ? '' : 'none';
     document.getElementById('headerServicos').textContent = escolhidos.map(s => s.nome).join(' · ');
@@ -175,7 +167,7 @@
   }
 
   /* ─── NAVIGATION ─── */
-  const sections = ['Serviços', 'Dados Pessoais', 'Objetivo do Atendimento', 'Saúde', 'Contraindicações'];
+  const sections = ['Serviços', 'Dados Pessoais', 'Ficha Geral', 'Sobre o Atendimento'];
   const totalSteps = sections.length;
   let current = 1;
 
@@ -232,11 +224,7 @@
       if (!idade) { showToast('Por favor, informe sua idade.'); return false; }
       if (!tel) { showToast('Por favor, informe seu telefone/WhatsApp.'); return false; }
     }
-    if (step === 3) {
-      const obj = document.getElementById('objetivo').value.trim();
-      if (!obj) { showToast('Por favor, descreva seu objetivo.'); return false; }
-    }
-    if (step === 5) {
+    if (step === totalSteps) {
       if (!document.getElementById('consentimento').checked) {
         showToast('Para continuar, aceite o termo de consentimento.');
         return false;
@@ -249,7 +237,7 @@
   function toggleConditional(id, radioEl) {
     const el = document.getElementById(id);
     if (!el) return;
-    if (radioEl && radioEl.value === 'Sim') {
+    if (radioEl && radioEl.value === (radioEl.dataset.abre || 'Sim')) {
       el.classList.add('visible');
     } else {
       el.classList.remove('visible');
@@ -344,7 +332,7 @@
         return [[q.resumo, getCheckboxes(q.id)]];
       case 'sim-qual': {
         const v = getRadio(q.id);
-        return [[q.resumo, v], ...(v === 'Sim' ? [[q.detalheResumo, getVal(q.id + 'Detalhe')]] : [])];
+        return [[q.resumo, v], ...(v === (q.abreEm || 'Sim') ? [[q.detalheResumo, getVal(q.id + 'Detalhe')]] : [])];
       }
       default:
         return [[q.resumo, getVal(q.id)]];
@@ -375,24 +363,17 @@
         ]
       },
       {
-        title: 'Objetivo do Atendimento', icon: '🎯',
-        rows: [['Objetivo', getVal('objetivo')]]
+        title: 'Ficha Geral de Saúde', icon: '🏥',
+        rows: FICHA_GERAL.flatMap(linhasDaPergunta)
       },
-      ...escolhidos.filter(s => s.objetivo.length).map(s => ({
-        title: s.nome, icon: '✨',
-        rows: s.objetivo.flatMap(linhasDaPergunta)
+      ...blocosDosServicos().map(b => ({
+        title: b.servico.nome, icon: '✨',
+        rows: b.perguntas.flatMap(linhasDaPergunta)
       })),
-      {
-        title: 'Saúde', icon: '🏥',
-        rows: [
-          ...perguntasDaSecao('saude', SAUDE_COMUM).flatMap(linhasDaPergunta),
-          ...(mostrarProdutos() ? [['Interesse em produtos', getRadio('interesseProdutos')]] : []),
-        ]
-      },
-      {
-        title: 'Contraindicações', icon: '⚠️',
-        rows: perguntasDaSecao('contraindicacoes').flatMap(linhasDaPergunta)
-      },
+      ...(mostrarProdutos() ? [{
+        title: 'Produtos', icon: '💧',
+        rows: [['Interesse em produtos', getRadio('interesseProdutos')]]
+      }] : []),
       {
         title: 'Termo de Consentimento', icon: '✍️',
         rows: [

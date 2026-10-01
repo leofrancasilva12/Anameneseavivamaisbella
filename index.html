@@ -23,10 +23,10 @@
   <div class="progress-wrap">
     <div class="progress-meta">
       <span class="progress-label" id="sectionName">Serviços</span>
-      <span class="progress-count" id="stepCount">1 de 5</span>
+      <span class="progress-count" id="stepCount">1 de 4</span>
     </div>
     <div class="progress-track">
-      <div class="progress-fill" id="progressFill" style="width:20%"></div>
+      <div class="progress-fill" id="progressFill" style="width:25%"></div>
     </div>
   </div>
 
@@ -95,16 +95,12 @@
         </div>
       </div>
 
-      <!-- STEP 3 — Objetivo -->
+      <!-- STEP 3 — Ficha Geral -->
       <div class="step" id="step3">
         <span class="section-tag">Seção 03</span>
-        <h2>Objetivo do Atendimento</h2>
+        <h2>Ficha Geral de Saúde</h2>
         <div class="fields">
-          <div class="field">
-            <label>Qual seu principal objetivo com o atendimento? <span class="req">*</span></label>
-            <textarea id="objetivo" placeholder="Descreva seu objetivo..."></textarea>
-          </div>
-          <div id="objetivoServicos" class="fields"></div>
+          <div id="fichaGeral" class="fields"></div>
         </div>
         <div class="btn-row">
           <button class="btn-back" onclick="goTo(2)">
@@ -118,12 +114,12 @@
         </div>
       </div>
 
-      <!-- STEP 4 — Saúde -->
+      <!-- STEP 4 — Perguntas do serviço -->
       <div class="step" id="step4">
         <span class="section-tag">Seção 04</span>
-        <h2>Saúde</h2>
+        <h2>Sobre o seu atendimento</h2>
         <div class="fields">
-          <div id="saudePerguntas" class="fields"></div>
+          <div id="perguntasServicos" class="fields"></div>
 
           <div class="field produtos-field" id="produtosField" style="display:none;">
             <div class="produtos-banner">
@@ -141,25 +137,6 @@
               <div class="parabens-msg" style="font-size: 0.95rem; font-family: 'DM Sans', sans-serif; font-style: normal; font-weight: 500; color: #1a1a1a;">Ótimo! Nossa consultora vai te apresentar opções personalizadas para você 💜</div>
             </div>
           </div>
-        </div>
-        <div class="btn-row">
-          <button class="btn-back" onclick="goTo(3)">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
-            Voltar
-          </button>
-          <button class="btn-next" onclick="goTo(5)">
-            Continuar
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
-          </button>
-        </div>
-      </div>
-
-      <!-- STEP 5 — Contraindicações -->
-      <div class="step" id="step5">
-        <span class="section-tag">Seção 05</span>
-        <h2>Contraindicações</h2>
-        <div class="fields">
-          <div id="contraPerguntas" class="fields"></div>
 
           <label class="consent">
             <input type="checkbox" id="consentimento" name="consentimento" value="Aceito" />
@@ -167,7 +144,7 @@
           </label>
         </div>
         <div class="btn-row">
-          <button class="btn-back" onclick="goTo(4)">
+          <button class="btn-back" onclick="goTo(3)">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
             Voltar
           </button>
@@ -191,7 +168,7 @@
         <div class="summary" id="summaryContent"></div>
 
         <div class="btn-row">
-          <button class="btn-back" onclick="goTo(5)">
+          <button class="btn-back" onclick="goTo(4)">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
             Editar
           </button>
