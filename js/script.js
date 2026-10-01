@@ -147,51 +147,97 @@
     return '';
   }
 
-  // Monta a ficha geral e as perguntas de cada serviço escolhido
+  /* ─── PÁGINAS DE 3 EM 3 ─── */
+  const POR_PAGINA = 3;
+
+  function emGrupos(lista) {
+    const grupos = [];
+    for (let i = 0; i < lista.length; i += POR_PAGINA) grupos.push(lista.slice(i, i + POR_PAGINA));
+    return grupos;
+  }
+
+  // Cada página guarda o título e a faixa de perguntas, para a barra de progresso
+  function renderPagina(perguntas, titulo, inicio, total, cabecalho = '') {
+    const fim = inicio + perguntas.length - 1;
+    return `
+      <div class="pagina" data-titulo="${escapeHtml(titulo)}" data-faixa="${inicio === fim ? inicio : inicio + ' a ' + fim} de ${total}">
+        ${cabecalho}
+        <div class="fields">${perguntas.map(renderPergunta).join('')}</div>
+      </div>`;
+  }
+
+  // Monta a ficha geral e as perguntas de cada serviço escolhido, em páginas de 3
   function montarEtapas() {
     const escolhidos = servicosEscolhidos();
 
-    document.getElementById('fichaGeral').innerHTML = FICHA_GERAL.map(renderPergunta).join('');
+    document.getElementById('fichaGeral').innerHTML = emGrupos(FICHA_GERAL)
+      .map((g, i) => renderPagina(g, 'Ficha Geral', i * POR_PAGINA + 1, FICHA_GERAL.length))
+      .join('');
 
-    document.getElementById('perguntasServicos').innerHTML = blocosDosServicos().map(b => `
-      <div class="servico-bloco">
-        <div class="servico-bloco-title">${b.servico.nome}</div>
-        <div class="fields">${b.perguntas.map(renderPergunta).join('')}</div>
-      </div>
-    `).join('');
+    document.getElementById('perguntasServicos').innerHTML = blocosDosServicos().map(b =>
+      emGrupos(b.perguntas).map((g, i) => renderPagina(
+        g, b.servico.nome, i * POR_PAGINA + 1, b.perguntas.length,
+        `<div class="servico-bloco-title">${b.servico.nome}</div>`
+      )).join('')
+    ).join('');
 
     document.getElementById('produtosField').style.display = mostrarProdutos() ? '' : 'none';
     document.getElementById('headerServicos').textContent = escolhidos.map(s => s.nome).join(' · ');
 
     fixPills(document.getElementById('formCard'));
+    montarTelas();
   }
 
-  /* ─── NAVIGATION ─── */
-  const sections = ['Serviços', 'Dados Pessoais', 'Ficha Geral', 'Sobre o Atendimento'];
-  const totalSteps = sections.length;
-  let current = 1;
+  /* ─── NAVIGATION ───
+     "telas" é a sequência completa: Serviços, Dados Pessoais e cada página de perguntas. */
+  let telas = [];
+  let current = 0;
 
-  function mostrarEtapa(n) {
+  function montarTelas() {
+    telas = [
+      { step: 'step1', titulo: 'Serviços' },
+      { step: 'step2', titulo: 'Dados Pessoais' },
+      ...['step3', 'step4'].flatMap(step =>
+        [...document.querySelectorAll(`#${step} .pagina`)].map(pagina => ({
+          step, pagina, titulo: pagina.dataset.titulo, faixa: pagina.dataset.faixa,
+        }))
+      ),
+    ];
+  }
+
+  function mostrarTela(n) {
+    current = Math.min(Math.max(n, 0), telas.length - 1);
+    const tela = telas[current];
     document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
-    current = n;
-    document.getElementById('step' + n).classList.add('active');
-    updateProgress(n);
+    document.querySelectorAll('.pagina').forEach(p => p.classList.remove('active'));
+    document.getElementById(tela.step).classList.add('active');
+    if (tela.pagina) tela.pagina.classList.add('active');
+
+    const ultima = current === telas.length - 1;
+    document.getElementById('btnFinalLabel').textContent = ultima ? 'Revisar respostas' : 'Avançar';
+
+    updateProgress();
     scrollTop();
     salvarRascunho();
   }
 
-  function goTo(n) {
-    if (n > current && !validate(current)) return;
-    if (current === 1 && n > 1) {
+  function avancar() {
+    if (!validate(telas[current])) return;
+    if (current === 0) {
       guardarRespostas();
       montarEtapas();
       aplicarRespostas(respostas);
     }
-    mostrarEtapa(n);
+    if (current === telas.length - 1) return goToConfirm();
+    mostrarTela(current + 1);
+  }
+
+  function voltar() {
+    if (document.getElementById('stepConfirm').classList.contains('active')) return mostrarTela(telas.length - 1);
+    mostrarTela(current - 1);
   }
 
   function goToConfirm() {
-    if (!validate(totalSteps)) return;
     document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
     document.getElementById('stepConfirm').classList.add('active');
     document.getElementById('progressFill').style.width = '100%';
@@ -201,10 +247,11 @@
     scrollTop();
   }
 
-  function updateProgress(n) {
-    document.getElementById('progressFill').style.width = (n / totalSteps * 100) + '%';
-    document.getElementById('sectionName').textContent = sections[n - 1];
-    document.getElementById('stepCount').textContent = n + ' de ' + totalSteps;
+  function updateProgress() {
+    const tela = telas[current];
+    document.getElementById('progressFill').style.width = ((current + 1) / (telas.length + 1) * 100) + '%';
+    document.getElementById('sectionName').textContent = tela.titulo;
+    document.getElementById('stepCount').textContent = tela.faixa ? 'Perguntas ' + tela.faixa : '';
   }
 
   function scrollTop() {
@@ -212,11 +259,11 @@
   }
 
   /* ─── VALIDATION ─── */
-  function validate(step) {
-    if (step === 1) {
+  function validate(tela) {
+    if (tela.step === 'step1') {
       if (!servicosEscolhidos().length) { showToast('Escolha pelo menos um serviço.'); return false; }
     }
-    if (step === 2) {
+    if (tela.step === 'step2') {
       const nome = document.getElementById('nome').value.trim();
       const idade = document.getElementById('idade').value.trim();
       const tel = document.getElementById('telefone').value.trim();
@@ -224,7 +271,7 @@
       if (!idade) { showToast('Por favor, informe sua idade.'); return false; }
       if (!tel) { showToast('Por favor, informe seu telefone/WhatsApp.'); return false; }
     }
-    if (step === totalSteps) {
+    if (tela.pagina && tela.pagina.id === 'paginaFinal') {
       if (!document.getElementById('consentimento').checked) {
         showToast('Para continuar, aceite o termo de consentimento.');
         return false;
@@ -300,7 +347,7 @@
   function salvarRascunho() {
     guardarRespostas();
     try {
-      localStorage.setItem(DRAFT_KEY, JSON.stringify({ respostas, etapa: current }));
+      localStorage.setItem(DRAFT_KEY, JSON.stringify({ respostas, tela: current }));
     } catch (e) { /* navegador sem armazenamento: segue sem rascunho */ }
   }
 
@@ -318,8 +365,7 @@
     montarEtapas();                // monta as perguntas desses serviços
     aplicarRespostas(respostas);   // preenche as perguntas
 
-    const etapa = servicosEscolhidos().length ? Math.min(Math.max(salvo.etapa || 1, 1), totalSteps) : 1;
-    if (etapa > 1) mostrarEtapa(etapa);
+    if (servicosEscolhidos().length && salvo.tela > 0) mostrarTela(salvo.tela);
     showToast('Recuperamos suas respostas anteriores.');
   }
 
@@ -428,4 +474,5 @@
 
   renderServicos();
   fixPills(formCard);
+  montarTelas();
   restaurarRascunho();

@@ -41,8 +41,8 @@
         <p class="step-hint">Você pode escolher mais de um.</p>
         <div class="servicos-grid" id="servicosGrid"></div>
         <div class="btn-row">
-          <button class="btn-next" onclick="goTo(2)">
-            Continuar
+          <button class="btn-next" onclick="avancar()">
+            Avançar
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
           </button>
         </div>
@@ -84,12 +84,12 @@
 
         </div>
         <div class="btn-row">
-          <button class="btn-back" onclick="goTo(1)">
+          <button class="btn-back" onclick="voltar()">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
             Voltar
           </button>
-          <button class="btn-next" onclick="goTo(3)">
-            Continuar
+          <button class="btn-next" onclick="avancar()">
+            Avançar
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
           </button>
         </div>
@@ -103,12 +103,12 @@
           <div id="fichaGeral" class="fields"></div>
         </div>
         <div class="btn-row">
-          <button class="btn-back" onclick="goTo(2)">
+          <button class="btn-back" onclick="voltar()">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
             Voltar
           </button>
-          <button class="btn-next" onclick="goTo(4)">
-            Continuar
+          <button class="btn-next" onclick="avancar()">
+            Avançar
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
           </button>
         </div>
@@ -121,6 +121,7 @@
         <div class="fields">
           <div id="perguntasServicos" class="fields"></div>
 
+          <div class="pagina" id="paginaFinal" data-titulo="Finalização">
           <div class="field produtos-field" id="produtosField" style="display:none;">
             <div class="produtos-banner">
               <div class="produtos-banner-icon">💧</div>
@@ -142,14 +143,15 @@
             <input type="checkbox" id="consentimento" name="consentimento" value="Aceito" />
             <span>Declaro que as informações prestadas nesta ficha são verdadeiras e que não omiti nenhuma condição de saúde. Estou ciente de que devo comunicar à profissional qualquer alteração no meu estado de saúde. <span class="req">*</span></span>
           </label>
+          </div>
         </div>
         <div class="btn-row">
-          <button class="btn-back" onclick="goTo(3)">
+          <button class="btn-back" onclick="voltar()">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
             Voltar
           </button>
-          <button class="btn-next" onclick="goToConfirm()">
-            Revisar respostas
+          <button class="btn-next" onclick="avancar()">
+            <span id="btnFinalLabel">Avançar</span>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
           </button>
         </div>
@@ -168,7 +170,7 @@
         <div class="summary" id="summaryContent"></div>
 
         <div class="btn-row">
-          <button class="btn-back" onclick="goTo(4)">
+          <button class="btn-back" onclick="voltar()">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
             Editar
           </button>

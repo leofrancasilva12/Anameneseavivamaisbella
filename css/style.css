@@ -631,3 +631,8 @@
       .btn-whatsapp, .btn-next { margin-left: 0; width: 100%; justify-content: center; }
       .btn-back { order: -1; }
     }
+
+    /* ─── PÁGINAS DE 3 EM 3 ─── */
+    .pagina { display: none; }
+    .pagina.active { display: block; animation: cardIn 0.3s cubic-bezier(.4,0,.2,1); }
+    .pagina > .servico-bloco-title { margin-bottom: 20px; }
