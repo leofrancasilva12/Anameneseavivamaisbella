@@ -52,6 +52,17 @@
       margin: 0 auto 4px;
     }
 
+    .foto-img {
+      width: 160px;
+      height: 160px;
+      object-fit: cover;
+      object-position: 50% 12%;
+      border-radius: 50%;
+      border: 3px solid var(--white);
+      box-shadow: 0 0 0 2px var(--rose-border), 0 8px 24px rgba(200,114,142,0.18);
+      margin-bottom: 14px;
+    }
+
     header p {
       font-size: 0.78rem;
       color: var(--gray-500);
