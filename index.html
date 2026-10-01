@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Anamnese — Viva Mais Bela</title>
+  <title>Anamnese — Viva Mais Bella</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
@@ -38,7 +38,7 @@
       <div class="step active" id="step1">
         <span class="section-tag">Seção 01</span>
         <h2>Quais serviços você vai realizar?</h2>
-        <p class="step-hint">Você pode escolher mais de um.</p>
+        <p class="step-hint">Você pode escolher mais de um. A ficha leva cerca de 5 minutos.</p>
         <div class="servicos-grid" id="servicosGrid"></div>
         <div class="btn-row">
           <button class="btn-next" onclick="avancar()">
@@ -99,6 +99,7 @@
       <div class="step" id="step3">
         <span class="section-tag">Seção 03</span>
         <h2>Ficha Geral de Saúde</h2>
+        <p class="incentivo"></p>
         <div class="fields">
           <div id="fichaGeral" class="fields"></div>
         </div>
@@ -118,6 +119,7 @@
       <div class="step" id="step4">
         <span class="section-tag">Seção 04</span>
         <h2>Sobre o seu atendimento</h2>
+        <p class="incentivo"></p>
         <div class="fields">
           <div id="perguntasServicos" class="fields"></div>
 
@@ -141,8 +143,12 @@
 
           <label class="consent">
             <input type="checkbox" id="consentimento" name="consentimento" value="Aceito" />
-            <span>Declaro que as informações prestadas nesta ficha são verdadeiras e que não omiti nenhuma condição de saúde. Estou ciente de que devo comunicar à profissional qualquer alteração no meu estado de saúde. <span class="req">*</span></span>
+            <span>Declaro que as informações prestadas nesta ficha são verdadeiras e que não omiti nenhuma condição de saúde. Autorizo a Viva Mais Bella a utilizar estes dados exclusivamente para avaliação e realização do meu atendimento, conforme a Lei Geral de Proteção de Dados (Lei 13.709/2018). Estou ciente de que devo comunicar qualquer alteração no meu estado de saúde. <span class="req">*</span></span>
           </label>
+          <div class="field assinatura-field">
+            <label>Digite seu nome completo como assinatura <span class="req">*</span></label>
+            <input type="text" id="assinatura" placeholder="Seu nome completo" autocomplete="name" />
+          </div>
           </div>
         </div>
         <div class="btn-row">
@@ -164,7 +170,7 @@
             <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
           </div>
           <h2>Tudo pronto!</h2>
-          <p>Revise suas respostas abaixo e envie via WhatsApp para a Viva Mais Bela.</p>
+          <p>Revise suas respostas abaixo e envie pelo WhatsApp para a Viva Mais Bella. Se quiser, envie também a ficha em PDF.</p>
         </div>
 
         <div class="summary" id="summaryContent"></div>
@@ -179,12 +185,28 @@
             Enviar pelo WhatsApp
           </button>
         </div>
+        <button class="btn-pdf" id="btnPdf" onclick="enviarPDF()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="12" x2="12" y2="18"/><polyline points="9 15 12 18 15 15"/></svg>
+          <span>Enviar ficha em PDF</span>
+        </button>
       </div>
 
     </div><!-- /.card -->
   </main>
 
 </div><!-- /.shell -->
+
+<!-- AVISO DE PERGUNTAS EM BRANCO -->
+<div class="modal" id="modalBranco" role="dialog" aria-modal="true" aria-labelledby="modalBrancoTitulo">
+  <div class="modal-box">
+    <h3 id="modalBrancoTitulo">Ficaram perguntas sem resposta</h3>
+    <p id="modalBrancoTexto"></p>
+    <div class="modal-actions">
+      <button class="btn-next" onclick="irParaPrimeiraEmBranco()">Voltar e responder</button>
+      <button class="btn-back" onclick="continuarAssim()">Continuar assim</button>
+    </div>
+  </div>
+</div>
 
 <!-- TOAST -->
 <div class="toast" id="toast"></div>

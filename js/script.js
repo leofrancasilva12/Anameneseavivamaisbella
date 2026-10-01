@@ -156,23 +156,59 @@
     return grupos;
   }
 
+  // Perguntas que têm uma opção "Não" (Não, Não fumo, Não bebo...)
+  function opcaoNao(q) {
+    if (q.tipo !== 'escolha' && q.tipo !== 'sim-qual') return null;
+    return (q.opcoes || ['Sim', 'Não']).find(o => /^Não/.test(o)) || null;
+  }
+
   // Cada página guarda o título e a faixa de perguntas, para a barra de progresso
   function renderPagina(perguntas, titulo, inicio, total, cabecalho = '') {
     const fim = inicio + perguntas.length - 1;
+    const botaoNenhuma = perguntas.filter(opcaoNao).length >= 2
+      ? `<button type="button" class="btn-nenhuma" onclick="marcarNaoNaPagina(this)">Nenhuma das anteriores</button>`
+      : '';
     return `
       <div class="pagina" data-titulo="${escapeHtml(titulo)}" data-faixa="${inicio === fim ? inicio : inicio + ' a ' + fim} de ${total}">
         ${cabecalho}
         <div class="fields">${perguntas.map(renderPergunta).join('')}</div>
+        ${botaoNenhuma}
       </div>`;
+  }
+
+  // Ficha geral: perguntas do mesmo tema ficam juntas, no máximo 3 por tela
+  function paginasPorTema(lista) {
+    const temas = [];
+    lista.forEach(q => {
+      const ultimo = temas[temas.length - 1];
+      if (ultimo && ultimo.tema === q.tema) ultimo.perguntas.push(q);
+      else temas.push({ tema: q.tema, perguntas: [q] });
+    });
+    return temas.flatMap(t => emGrupos(t.perguntas).map(perguntas => ({ tema: t.tema, perguntas })));
+  }
+
+  function marcarNaoNaPagina(botao) {
+    botao.closest('.pagina').querySelectorAll('.fields > .field').forEach(field => {
+      const radio = [...field.querySelectorAll(':scope > .pills input[type="radio"]')].find(r => /^Não/.test(r.value));
+      if (!radio) return;
+      radio.checked = true;
+      field.classList.remove('em-branco');
+      if (radio.dataset.cond) toggleConditional(radio.dataset.cond, radio);
+    });
+    salvarRascunho();
   }
 
   // Monta a ficha geral e as perguntas de cada serviço escolhido, em páginas de 3
   function montarEtapas() {
     const escolhidos = servicosEscolhidos();
 
-    document.getElementById('fichaGeral').innerHTML = emGrupos(FICHA_GERAL)
-      .map((g, i) => renderPagina(g, 'Ficha Geral', i * POR_PAGINA + 1, FICHA_GERAL.length))
-      .join('');
+    let inicio = 1;
+    document.getElementById('fichaGeral').innerHTML = paginasPorTema(FICHA_GERAL).map(pg => {
+      const html = renderPagina(pg.perguntas, 'Ficha Geral', inicio, FICHA_GERAL.length,
+        pg.tema ? `<div class="tema-title">${pg.tema}</div>` : '');
+      inicio += pg.perguntas.length;
+      return html;
+    }).join('');
 
     document.getElementById('perguntasServicos').innerHTML = blocosDosServicos().map(b =>
       emGrupos(b.perguntas).map((g, i) => renderPagina(
@@ -213,12 +249,31 @@
     document.getElementById(tela.step).classList.add('active');
     if (tela.pagina) tela.pagina.classList.add('active');
 
+    atualizarIncentivo(tela);
+
     const ultima = current === telas.length - 1;
     document.getElementById('btnFinalLabel').textContent = ultima ? 'Revisar respostas' : 'Avançar';
 
     updateProgress();
     scrollTop();
     salvarRascunho();
+  }
+
+  function primeiroNome() {
+    return document.getElementById('nome').value.trim().split(/\s+/)[0] || '';
+  }
+
+  // Mensagens de acolhimento: no início da ficha geral, no início das perguntas do serviço e na tela final
+  function atualizarIncentivo(tela) {
+    document.querySelectorAll('.incentivo').forEach(el => { el.textContent = ''; });
+    if (!tela.pagina) return;
+    const nome = primeiroNome();
+    const primeiraDoStep = telas.find(t => t.step === tela.step) === tela;
+    let msg = '';
+    if (tela.pagina.id === 'paginaFinal') msg = nome ? `Última etapa, ${nome}!` : 'Última etapa!';
+    else if (primeiraDoStep && tela.step === 'step3') msg = nome ? `Prazer, ${nome}! Agora, algumas perguntas sobre a sua saúde.` : 'Agora, algumas perguntas sobre a sua saúde.';
+    else if (primeiraDoStep && tela.step === 'step4') msg = nome ? `Falta pouco, ${nome}!` : 'Falta pouco!';
+    document.querySelector(`#${tela.step} .incentivo`).textContent = msg;
   }
 
   function avancar() {
@@ -228,8 +283,52 @@
       montarEtapas();
       aplicarRespostas(respostas);
     }
-    if (current === telas.length - 1) return goToConfirm();
+    if (current === telas.length - 1) return verificarBrancos();
     mostrarTela(current + 1);
+  }
+
+  /* ─── AVISO DE PERGUNTAS EM BRANCO ─── */
+  function perguntasAtivas() {
+    return [...FICHA_GERAL, ...blocosDosServicos().flatMap(b => b.perguntas)];
+  }
+
+  function emBranco(q) {
+    if (q.opcional) return false;
+    if (q.tipo === 'escolha' || q.tipo === 'sim-qual' || q.tipo === 'multipla') {
+      return !document.querySelector(`input[name="${q.id}"]:checked`);
+    }
+    return getVal(q.id) === '—';
+  }
+
+  function elementoDaPergunta(q) {
+    return document.querySelector(`input[name="${q.id}"]`) || document.getElementById(q.id);
+  }
+
+  function verificarBrancos() {
+    const brancos = perguntasAtivas().filter(emBranco);
+    if (!brancos.length) return goToConfirm();
+    document.getElementById('modalBrancoTexto').textContent = brancos.length === 1
+      ? 'Você deixou 1 pergunta sem resposta. Quer voltar e responder, ou continuar assim?'
+      : `Você deixou ${brancos.length} perguntas sem resposta. Quer voltar e responder, ou continuar assim?`;
+    document.getElementById('modalBranco').classList.add('show');
+  }
+
+  function fecharModal() {
+    document.getElementById('modalBranco').classList.remove('show');
+  }
+
+  function irParaPrimeiraEmBranco() {
+    fecharModal();
+    const brancos = perguntasAtivas().filter(emBranco);
+    document.querySelectorAll('.field.em-branco').forEach(f => f.classList.remove('em-branco'));
+    brancos.forEach(q => elementoDaPergunta(q).closest('.field').classList.add('em-branco'));
+    const pagina = elementoDaPergunta(brancos[0]).closest('.pagina');
+    mostrarTela(telas.findIndex(t => t.pagina === pagina));
+  }
+
+  function continuarAssim() {
+    fecharModal();
+    goToConfirm();
   }
 
   function voltar() {
@@ -245,6 +344,7 @@
     document.getElementById('stepCount').textContent = '✓';
     buildSummary();
     scrollTop();
+    prepararPDF();
   }
 
   function updateProgress() {
@@ -274,6 +374,10 @@
     if (tela.pagina && tela.pagina.id === 'paginaFinal') {
       if (!document.getElementById('consentimento').checked) {
         showToast('Para continuar, aceite o termo de consentimento.');
+        return false;
+      }
+      if (!document.getElementById('assinatura').value.trim()) {
+        showToast('Digite seu nome completo como assinatura.');
         return false;
       }
     }
@@ -385,6 +489,21 @@
     }
   }
 
+  // Respostas de risco (perguntas com "alerta: true" respondidas com algo diferente de "Não")
+  function pontosDeAtencao() {
+    return perguntasAtivas().filter(q => q.alerta).flatMap(q => {
+      const v = getRadio(q.id);
+      if (v === '—' || /^Não/.test(v)) return [];
+      const detalhe = q.tipo === 'sim-qual' && v === (q.abreEm || 'Sim') ? getVal(q.id + 'Detalhe') : '—';
+      return [[q.resumo, detalhe !== '—' ? `${v} (${detalhe})` : v]];
+    });
+  }
+
+  function dataHora() {
+    const d = new Date();
+    return d.toLocaleDateString('pt-BR') + ' às ' + d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+  }
+
   function montarDadosResumo() {
     const escolhidos = servicosEscolhidos();
     const peso = getVal('peso');
@@ -392,7 +511,13 @@
     const imc = document.getElementById('imcValue').textContent;
     const imcClass = document.getElementById('imcClass').textContent;
 
+    const atencao = pontosDeAtencao();
+
     return [
+      {
+        title: 'Atenção', icon: '⚠️', destaque: true,
+        rows: atencao.length ? atencao : [['Nenhum ponto de atenção informado', '']]
+      },
       {
         title: 'Serviços', icon: '💆',
         rows: [['Serviços escolhidos', escolhidos.map(s => s.nome).join(', ')]]
@@ -423,8 +548,9 @@
       {
         title: 'Termo de Consentimento', icon: '✍️',
         rows: [
-          ['Declaração de veracidade', document.getElementById('consentimento').checked ? 'Aceito' : 'Não aceito'],
-          ['Data', new Date().toLocaleDateString('pt-BR')],
+          ['Declaração e consentimento (LGPD)', document.getElementById('consentimento').checked ? 'Aceito' : 'Não aceito'],
+          ['Assinatura', getVal('assinatura')],
+          ['Data', dataHora()],
         ]
       }
     ].filter(section => section.rows.length);
@@ -433,7 +559,7 @@
   function buildSummary() {
     const container = document.getElementById('summaryContent');
     container.innerHTML = montarDadosResumo().map(section => `
-      <div class="summary-section">
+      <div class="summary-section${section.destaque ? ' summary-destaque' : ''}">
         <div class="summary-section-title">${escapeHtml(section.title)}</div>
         ${section.rows.map(([q, a]) => `
           <div class="summary-row">
@@ -447,10 +573,10 @@
 
   /* ─── WHATSAPP ─── */
   function sendWhatsApp() {
-    const lines = ['🌸 *Anamnese — Viva Mais Bela*'];
+    const lines = ['🌸 *Anamnese — Viva Mais Bella*'];
     montarDadosResumo().forEach(section => {
-      lines.push('', `*${section.icon} ${section.title}*`);
-      section.rows.forEach(([q, a]) => lines.push(`${q}: ${a}`));
+      lines.push('', `*${section.icon} ${section.destaque ? section.title.toUpperCase() : section.title}*`);
+      section.rows.forEach(([q, a]) => lines.push(a ? `${q}: ${a}` : q));
     });
     lines.push('', '_Enviado via Anamnese Digital Viva Mais Bela_');
 
@@ -461,6 +587,149 @@
     limparRascunho();
   }
 
+  /* ─── PDF ───
+     O PDF é gerado no celular da cliente. A biblioteca e a logo são carregadas
+     quando a tela de revisão abre, para o botão responder na hora. */
+  let pdfPronto = null;
+  let logoPDF = null;
+
+  function carregarScript(src) {
+    return new Promise((resolve, reject) => {
+      const s = document.createElement('script');
+      s.src = src; s.onload = resolve; s.onerror = reject;
+      document.head.appendChild(s);
+    });
+  }
+
+  function carregarLogo() {
+    return new Promise(resolve => {
+      const img = new Image();
+      img.onload = () => {
+        const escala = 240 / Math.max(img.width, img.height);
+        const c = document.createElement('canvas');
+        c.width = Math.round(img.width * escala); c.height = Math.round(img.height * escala);
+        c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+        resolve({ data: c.toDataURL('image/png'), proporcao: c.height / c.width });
+      };
+      img.onerror = () => resolve(null);
+      img.src = 'img/logo-transparent.png';
+    });
+  }
+
+  function prepararPDF() {
+    if (!pdfPronto) {
+      pdfPronto = Promise.all([
+        window.jspdf ? Promise.resolve() : carregarScript('js/vendor/jspdf.umd.min.js'),
+        carregarLogo().then(l => { logoPDF = l; }),
+      ]);
+    }
+    return pdfPronto;
+  }
+
+  function gerarPDF() {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+    const W = 210, H = 297, M = 16, CW = W - 2 * M;
+    const ROSA = [200, 114, 142], ROSA_CLARO = [253, 240, 245], BORDA = [236, 197, 212], CINZA = [107, 114, 128], ESCURO = [17, 24, 39];
+    const limpar = t => String(t).replace(/[—–]/g, '-').replace(/[^\x00-\xFF]/g, '').trim();
+    let y = M;
+    const garantir = h => { if (y + h > H - M - 6) { doc.addPage(); y = M; } };
+
+    if (logoPDF) {
+      const w = 30, h = w * logoPDF.proporcao;
+      doc.addImage(logoPDF.data, 'PNG', W / 2 - w / 2, y, w, h);
+      y += h + 9;
+    }
+    doc.setFont('helvetica', 'normal').setFontSize(17).setTextColor(...ESCURO);
+    doc.text('Ficha de Anamnese', W / 2, y, { align: 'center' }); y += 6;
+    doc.setFontSize(9).setTextColor(...CINZA);
+    doc.text(limpar(`Viva Mais Bella - preenchida em ${dataHora()}`), W / 2, y, { align: 'center' }); y += 9;
+
+    montarDadosResumo().forEach(sec => {
+      if (sec.destaque) {
+        const linhas = sec.rows.flatMap(([q, a]) => doc.splitTextToSize(limpar(a ? `${q}: ${a}` : q), CW - 10));
+        const h = 12 + linhas.length * 4.6;
+        garantir(h);
+        doc.setFillColor(...ROSA_CLARO).setDrawColor(...ROSA).setLineWidth(0.4);
+        doc.roundedRect(M, y, CW, h, 2, 2, 'FD');
+        doc.setFont('helvetica', 'bold').setFontSize(10).setTextColor(...ROSA);
+        doc.text('ATENÇÃO', M + 5, y + 6.5);
+        doc.setFont('helvetica', 'normal').setFontSize(9.5).setTextColor(...ESCURO);
+        doc.text(linhas, M + 5, y + 12);
+        y += h + 7;
+        return;
+      }
+      garantir(14);
+      doc.setFont('helvetica', 'bold').setFontSize(9).setTextColor(...ROSA);
+      doc.text(limpar(sec.title).toUpperCase(), M, y);
+      doc.setDrawColor(...BORDA).setLineWidth(0.3).line(M, y + 1.8, W - M, y + 1.8);
+      y += 6.5;
+      doc.setFontSize(9);
+      sec.rows.forEach(([q, a]) => {
+        const ql = doc.splitTextToSize(limpar(q), 66);
+        const al = doc.splitTextToSize(limpar(a), CW - 70);
+        const h = Math.max(ql.length, al.length) * 4 + 1.6;
+        garantir(h);
+        doc.setFont('helvetica', 'normal').setTextColor(...CINZA).text(ql, M, y);
+        doc.setFont('helvetica', 'bold').setTextColor(...ESCURO).text(al, M + 70, y);
+        y += h;
+      });
+      y += 4;
+    });
+
+    // Termo completo e assinatura
+    const termo = limpar(document.querySelector('.consent > span').textContent.replace('*', ''));
+    const tl = doc.splitTextToSize(termo, CW);
+    garantir(tl.length * 4 + 24);
+    doc.setFont('helvetica', 'normal').setFontSize(8.5).setTextColor(...CINZA).text(tl, M, y);
+    y += tl.length * 4 + 10;
+    doc.setDrawColor(...ESCURO).setLineWidth(0.3).line(M, y, M + 90, y);
+    doc.setFont('helvetica', 'bold').setFontSize(10).setTextColor(...ESCURO).text(limpar(getVal('assinatura')), M, y - 2);
+    doc.setFont('helvetica', 'normal').setFontSize(8).setTextColor(...CINZA)
+      .text(limpar(`Assinatura digital (nome digitado) - ${dataHora()}`), M, y + 4);
+
+    const total = doc.getNumberOfPages();
+    for (let i = 1; i <= total; i++) {
+      doc.setPage(i);
+      doc.setFont('helvetica', 'normal').setFontSize(7.5).setTextColor(...CINZA);
+      doc.text(`Viva Mais Bella - Ficha de Anamnese - página ${i} de ${total}`, W / 2, H - 8, { align: 'center' });
+    }
+    return doc;
+  }
+
+  async function enviarPDF() {
+    const btn = document.getElementById('btnPdf');
+    const label = btn.querySelector('span');
+    btn.disabled = true; label.textContent = 'Gerando PDF...';
+    try {
+      await prepararPDF();
+      const doc = gerarPDF();
+      const nome = (getVal('nome') === '—' ? 'cliente' : getVal('nome')).replace(/[^\p{L}\p{N} ]/gu, '').trim();
+      const arquivo = `Anamnese - ${nome} - ${new Date().toLocaleDateString('pt-BR').replace(/\//g, '-')}.pdf`;
+      const blob = doc.output('blob');
+      const file = new File([blob], arquivo, { type: 'application/pdf' });
+
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        try {
+          await navigator.share({ files: [file], title: 'Ficha de Anamnese', text: 'Ficha de anamnese - Viva Mais Bella' });
+          return;
+        } catch (e) {
+          if (e.name === 'AbortError') return;
+        }
+      }
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = arquivo;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 10000);
+      showToast('PDF baixado. Anexe no WhatsApp da clínica.');
+    } catch (e) {
+      showToast('Não foi possível gerar o PDF. Tente novamente.');
+    } finally {
+      btn.disabled = false; label.textContent = 'Enviar ficha em PDF';
+    }
+  }
+
   /* ─── INIT ─── */
   const formCard = document.getElementById('formCard');
 
@@ -468,6 +737,8 @@
     const el = e.target;
     if (el.type === 'radio' && el.dataset.cond) toggleConditional(el.dataset.cond, el);
     if (el.name === 'servico') atualizarCardsServico();
+    const field = el.closest('.field.em-branco');
+    if (field) field.classList.remove('em-branco');
     salvarRascunho();
   });
   formCard.addEventListener('input', salvarRascunho);

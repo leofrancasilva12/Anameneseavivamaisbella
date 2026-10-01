@@ -155,9 +155,10 @@
     .field { display: flex; flex-direction: column; gap: 7px; }
 
     .field label {
-      font-size: 0.8rem;
+      font-size: 1rem;
       font-weight: 500;
-      letter-spacing: 0.04em;
+      line-height: 1.4;
+      letter-spacing: 0.01em;
       color: var(--gray-700);
     }
 
@@ -203,7 +204,7 @@
       padding: 9px 18px;
       border: 1.5px solid var(--rose-border);
       border-radius: 99px;
-      font-size: 0.82rem;
+      font-size: 0.92rem;
       font-weight: 400;
       color: var(--gray-700);
       cursor: pointer;
@@ -403,7 +404,7 @@
       background: var(--rose-pale);
       border: 1.5px solid var(--rose-border);
       border-radius: var(--radius-sm);
-      font-size: 0.8rem;
+      font-size: 0.88rem;
       line-height: 1.55;
       color: var(--gray-700);
       cursor: pointer;
@@ -636,3 +637,116 @@
     .pagina { display: none; }
     .pagina.active { display: block; animation: cardIn 0.3s cubic-bezier(.4,0,.2,1); }
     .pagina > .servico-bloco-title { margin-bottom: 20px; }
+
+    /* ─── TEMAS, INCENTIVO E "NENHUMA DAS ANTERIORES" ─── */
+    .tema-title {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 1.3rem;
+      font-style: italic;
+      color: var(--rose-deep);
+      margin-bottom: 20px;
+    }
+
+    .incentivo {
+      margin: -18px 0 24px;
+      font-size: 0.92rem;
+      color: var(--gray-700);
+    }
+
+    .incentivo:empty { display: none; }
+
+    .btn-nenhuma {
+      margin-top: 24px;
+      width: 100%;
+      padding: 12px 18px;
+      border: 1.5px dashed var(--rose);
+      border-radius: 99px;
+      background: var(--rose-pale);
+      color: var(--rose-deep);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.92rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.15s, border-style 0.15s;
+    }
+
+    .btn-nenhuma:hover { background: var(--rose-light); border-style: solid; }
+
+    .field.em-branco > label::after {
+      content: 'Sem resposta';
+      margin-left: 8px;
+      padding: 2px 8px;
+      border-radius: 99px;
+      background: var(--rose-light);
+      color: var(--rose-deep);
+      font-size: 0.7rem;
+      font-weight: 500;
+      vertical-align: middle;
+    }
+
+    .assinatura-field { margin-top: 4px; }
+
+    /* ─── AVISO DE PERGUNTAS EM BRANCO ─── */
+    .modal {
+      position: fixed; inset: 0;
+      display: none;
+      align-items: center; justify-content: center;
+      padding: 24px;
+      background: rgba(17,24,39,0.45);
+      z-index: 200;
+    }
+
+    .modal.show { display: flex; }
+
+    .modal-box {
+      width: 100%; max-width: 400px;
+      background: var(--white);
+      border-radius: 20px;
+      padding: 28px 24px 22px;
+      box-shadow: var(--shadow-card);
+      animation: cardIn 0.25s cubic-bezier(.4,0,.2,1);
+    }
+
+    .modal-box h3 {
+      font-family: 'Cormorant Garamond', serif;
+      font-weight: 500;
+      font-size: 1.45rem;
+      margin-bottom: 8px;
+    }
+
+    .modal-box p { font-size: 0.92rem; color: var(--gray-700); line-height: 1.55; }
+
+    .modal-actions { display: flex; flex-direction: column; gap: 8px; margin-top: 22px; }
+    .modal-actions .btn-next { margin-left: 0; justify-content: center; }
+    .modal-actions .btn-back { justify-content: center; }
+
+    /* ─── ATENÇÃO NO RESUMO E BOTÃO PDF ─── */
+    .summary-destaque {
+      background: var(--rose-pale);
+      border: 1.5px solid var(--rose);
+      border-radius: var(--radius-sm);
+      padding: 14px 16px;
+      margin-bottom: 12px;
+    }
+
+    .summary-destaque + .summary-section { border-top: none; }
+
+    .btn-pdf {
+      margin-top: 12px;
+      width: 100%;
+      display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+      padding: 13px 24px;
+      border: 1.5px solid var(--rose);
+      border-radius: 99px;
+      background: var(--white);
+      color: var(--rose-deep);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.88rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+
+    .btn-pdf:hover { background: var(--rose-pale); }
+    .btn-pdf:disabled { opacity: 0.6; cursor: wait; }
+    .btn-pdf svg { width: 18px; height: 18px; }
