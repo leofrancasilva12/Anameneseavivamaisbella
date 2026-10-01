@@ -595,22 +595,6 @@
     `).join('');
   }
 
-  /* ─── WHATSAPP ─── */
-  function sendWhatsApp() {
-    const lines = ['🌸 *Anamnese — Viva Mais Bella*'];
-    montarDadosResumo().forEach(section => {
-      lines.push('', `*${section.icon} ${section.destaque ? section.title.toUpperCase() : section.title}*`);
-      section.rows.forEach(([q, a]) => lines.push(a ? `${q}: ${a}` : q));
-    });
-    lines.push('', '_Enviado via Anamnese Digital Viva Mais Bella_');
-
-    // ← Troque pelo número do WhatsApp do spa (somente dígitos, com DDI)
-    const phone = '5571991158054';
-    const msg = encodeURIComponent(lines.join('\n'));
-    window.open(`https://wa.me/${phone}?text=${msg}`, '_blank');
-    limparRascunho();
-  }
-
   /* ─── PDF ───
      O PDF é gerado no celular da cliente. A biblioteca e a logo são carregadas
      quando a tela de revisão abre, para o botão responder na hora. */
@@ -625,18 +609,28 @@
     });
   }
 
+  // Foto do topo recortada em círculo, com o mesmo enquadramento da página
   function carregarLogo() {
     return new Promise(resolve => {
       const img = new Image();
       img.onload = () => {
-        const escala = 240 / Math.max(img.width, img.height);
+        const T = 320, borda = 8;
         const c = document.createElement('canvas');
-        c.width = Math.round(img.width * escala); c.height = Math.round(img.height * escala);
-        c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
-        resolve({ data: c.toDataURL('image/png'), proporcao: c.height / c.width });
+        c.width = c.height = T;
+        const ctx = c.getContext('2d');
+        const lado = Math.min(img.width, img.height);
+        const sx = (img.width - lado) / 2;
+        const sy = (img.height - lado) * 0.12;
+        ctx.save();
+        ctx.beginPath(); ctx.arc(T / 2, T / 2, T / 2 - borda, 0, Math.PI * 2); ctx.clip();
+        ctx.drawImage(img, sx, sy, lado, lado, borda, borda, T - 2 * borda, T - 2 * borda);
+        ctx.restore();
+        ctx.beginPath(); ctx.arc(T / 2, T / 2, T / 2 - borda / 2, 0, Math.PI * 2);
+        ctx.lineWidth = borda; ctx.strokeStyle = '#ecc5d4'; ctx.stroke();
+        resolve({ data: c.toDataURL('image/png'), proporcao: 1 });
       };
       img.onerror = () => resolve(null);
-      img.src = 'img/logo-transparent.png';
+      img.src = 'img/foto.jpg';
     });
   }
 
@@ -736,17 +730,23 @@
       if (navigator.canShare && navigator.canShare({ files: [file] })) {
         try {
           await navigator.share({ files: [file], title: 'Ficha de Anamnese', text: 'Ficha de anamnese - Viva Mais Bella' });
+          limparRascunho();
           return;
         } catch (e) {
           if (e.name === 'AbortError') return;
         }
       }
+      // Sem compartilhamento de arquivos: baixa o PDF e abre a conversa da clínica para anexar
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url; a.download = arquivo;
       document.body.appendChild(a); a.click(); a.remove();
       setTimeout(() => URL.revokeObjectURL(url), 10000);
-      showToast('PDF baixado. Anexe no WhatsApp da clínica.');
+      limparRascunho();
+      showToast('PDF baixado. Anexe o arquivo na conversa do WhatsApp.');
+      const msg = encodeURIComponent(`Olá! Segue minha ficha de anamnese em PDF. ${getVal('nome')}`);
+      // ← Troque pelo número do WhatsApp do spa (somente dígitos, com DDI)
+      setTimeout(() => window.open(`https://wa.me/5571991158054?text=${msg}`, '_blank'), 1200);
     } catch (e) {
       showToast('Não foi possível gerar o PDF. Tente novamente.');
     } finally {
