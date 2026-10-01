@@ -750,7 +750,7 @@
     } catch (e) {
       showToast('Não foi possível gerar o PDF. Tente novamente.');
     } finally {
-      btn.disabled = false; label.textContent = 'Gerar PDF';
+      btn.disabled = false; label.textContent = 'Gerar PDF e enviar';
     }
   }
 
