@@ -711,6 +711,32 @@ header .header-servicos {
   margin-bottom: 20px;
 }
 
+.pagina > .servico-bloco-title + .tema-servico {
+  margin: -12px 0 22px;
+  font-family: 'Jost', sans-serif;
+  font-style: normal;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--link);
+}
+
+/* ─── NOTA, LISTA DE ITENS E CAMPO "OUTRO" ─── */
+.pergunta-nota {
+  margin-top: -2px;
+  padding: 10px 14px;
+  background: var(--soft);
+  border-radius: 12px;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  color: var(--ink2);
+}
+
+.lista-campos { display: flex; flex-direction: column; gap: 8px; }
+
+.campo-outro { margin-top: 10px; }
+
 .incentivo {
   margin: -14px 0 24px;
   font-size: 1rem;

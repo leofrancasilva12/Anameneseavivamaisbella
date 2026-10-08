@@ -109,20 +109,30 @@
 
   function renderPergunta(q) {
     const req = q.obrigatoria ? ' <span class="req">*</span>' : '';
-    const label = `<label>${q.texto}${req}</label>`;
+    const nota = q.nota ? `<p class="pergunta-nota">${q.nota}</p>` : '';
+    const label = `<label>${q.texto}${req}</label>${nota}`;
     const ph = q.placeholder ? ` placeholder="${escapeHtml(q.placeholder)}"` : '';
 
     switch (q.tipo) {
       case 'texto':
         return `<div class="field">${label}<input type="text" id="${q.id}"${ph} /></div>`;
+      case 'lista': {
+        const itens = Array.from({ length: q.itens || 3 }, (_, i) => i + 1);
+        return `<div class="field">${label}<div class="lista-campos">${itens.map(n =>
+          `<input type="text" id="${q.id}_${n}" placeholder="${n}." aria-label="${escapeHtml(q.resumo)} ${n}" />`).join('')}</div></div>`;
+      }
       case 'texto-longo':
         return `<div class="field">${label}<textarea id="${q.id}"${ph}></textarea></div>`;
       case 'numero':
         return `<div class="field">${label}<input type="number" id="${q.id}"${ph} /></div>`;
       case 'escolha':
         return `<div class="field">${label}${renderPills(q, 'radio')}</div>`;
-      case 'multipla':
-        return `<div class="field">${label}${renderPills(q, 'checkbox')}</div>`;
+      case 'multipla': {
+        const outro = q.outro
+          ? `<input type="text" id="${q.id}Outro" class="campo-outro" placeholder="${escapeHtml(q.outro)}" aria-label="${escapeHtml(q.outro)}" />`
+          : '';
+        return `<div class="field">${label}${renderPills(q, 'checkbox')}${outro}</div>`;
+      }
       case 'sim-qual': {
         const cond = 'cond_' + q.id;
         const opcoes = q.opcoes || ['Sim', 'Não'];
@@ -158,6 +168,7 @@
 
   // Perguntas que têm uma opção "Não" (Não, Não fumo, Não bebo...)
   function opcaoNao(q) {
+    if (q.semAtalho) return null;
     if (q.tipo === 'multipla') return q.opcoes.includes('Nenhuma') ? 'Nenhuma' : null;
     if (q.tipo !== 'escolha' && q.tipo !== 'sim-qual') return null;
     return (q.opcoes || ['Sim', 'Não']).find(o => /^Não/.test(o)) || null;
@@ -230,12 +241,19 @@
       return html;
     }).join('');
 
-    document.getElementById('perguntasServicos').innerHTML = blocosDosServicos().map(b =>
-      emGrupos(b.perguntas).map((g, i) => renderPagina(
-        g, b.servico.nome, i * POR_PAGINA + 1, b.perguntas.length,
-        `<div class="servico-bloco-title">${b.servico.nome}</div>`
-      )).join('')
-    ).join('');
+    // Perguntas do serviço: as que têm "tema" ficam agrupadas sob um subtítulo, no máximo 3 por tela
+    document.getElementById('perguntasServicos').innerHTML = blocosDosServicos().map(b => {
+      let ini = 1;
+      return paginasPorTema(b.perguntas).map(pg => {
+        const html = renderPagina(
+          pg.perguntas, b.servico.nome, ini, b.perguntas.length,
+          `<div class="servico-bloco-title">${b.servico.nome}</div>` +
+          (pg.tema ? `<div class="tema-title tema-servico">${pg.tema}</div>` : '')
+        );
+        ini += pg.perguntas.length;
+        return html;
+      }).join('');
+    }).join('');
 
     document.getElementById('produtosField').style.display = mostrarProdutos() ? '' : 'none';
     document.getElementById('headerServicos').textContent = escolhidos.map(s => s.nome).join(' · ');
@@ -314,14 +332,22 @@
 
   function emBranco(q) {
     if (q.opcional) return false;
+    if (q.tipo === 'multipla' && q.outro && getVal(q.id + 'Outro') !== '—') return false;
     if (q.tipo === 'escolha' || q.tipo === 'sim-qual' || q.tipo === 'multipla') {
       return !document.querySelector(`input[name="${q.id}"]:checked`);
     }
+    if (q.tipo === 'lista') return valoresDaLista(q) === '—';
     return getVal(q.id) === '—';
   }
 
   function elementoDaPergunta(q) {
-    return document.querySelector(`input[name="${q.id}"]`) || document.getElementById(q.id);
+    return document.querySelector(`input[name="${q.id}"]`) || document.getElementById(q.id) || document.getElementById(q.id + '_1');
+  }
+
+  // Itens preenchidos de uma pergunta do tipo "lista", separados por ponto e vírgula
+  function valoresDaLista(q) {
+    const itens = Array.from({ length: q.itens || 3 }, (_, i) => getVal(`${q.id}_${i + 1}`)).filter(v => v !== '—');
+    return itens.length ? itens.join('; ') : '—';
   }
 
   function verificarBrancos() {
@@ -498,8 +524,12 @@
     switch (q.tipo) {
       case 'escolha':
         return [[q.resumo, getRadio(q.id)]];
-      case 'multipla':
-        return [[q.resumo, getCheckboxes(q.id)]];
+      case 'multipla': {
+        const outro = q.outro ? getVal(q.id + 'Outro') : '—';
+        return [[q.resumo, getCheckboxes(q.id)], ...(outro !== '—' ? [[q.resumo + ' (outro)', outro]] : [])];
+      }
+      case 'lista':
+        return [[q.resumo, valoresDaLista(q)]];
       case 'sim-qual': {
         const v = getRadio(q.id);
         return [[q.resumo, v], ...(v === (q.abreEm || 'Sim') ? [[q.detalheResumo, getVal(q.id + 'Detalhe')]] : [])];

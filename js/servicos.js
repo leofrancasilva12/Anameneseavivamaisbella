@@ -23,6 +23,11 @@
      alerta    → true: resposta diferente de "Não" (ou, nas de marcar várias, qualquer item exceto "Nenhuma")
                  vai para o bloco ATENÇÃO no topo do resumo, WhatsApp e PDF
      opcional  → true: não entra no aviso de perguntas em branco
+     nota      → texto pequeno logo abaixo da pergunta (observação ou explicação das opções)
+     semAtalho → true: a pergunta não conta para o botão "Nenhuma das anteriores"
+     tipo 'lista'    → até "itens" campos curtos (padrão 3), ex.: "conte até 3 aspectos"
+     outro (só em 'multipla') → texto do campo livre abaixo das opções, para "Outro"
+     tema (nos serviços) → subtítulo; perguntas do mesmo tema ficam juntas, no máximo 3 por tela
 
    "produtos: true" mostra o banner de produtos (retenção e sobrepeso).
 */
@@ -85,13 +90,42 @@ const SERVICOS = [
     descricao: 'Menos inchaço e retenção de líquidos',
     produtos: true,
     perguntas: [
-      { id: 'objetivoDrenagem', tipo: 'multipla', texto: 'Qual seu objetivo?', resumo: 'Objetivo',
-        opcoes: ['Pós-operatório', 'Retenção de líquido', 'Gestação', 'Estética'] },
-      { id: 'posOperatorio', opcional: true, tipo: 'texto-longo', texto: 'Se pós-operatório: qual cirurgia, em que data, e tem liberação médica?', resumo: 'Pós-operatório',
+      // ── Histórico e experiência com drenagem linfática
+      { id: 'linfedemaLipedema', tema: 'Histórico e experiência', alerta: true, tipo: 'escolha', texto: 'Você possui diagnóstico de linfedema ou lipedema?', resumo: 'Diagnóstico de linfedema / lipedema',
+        opcoes: ['Sim, linfedema', 'Sim, lipedema', 'Sim, ambos', 'Não', 'Não sei informar'] },
+      { id: 'orientacaoSinais', tema: 'Histórico e experiência', opcional: true, semAtalho: true, tipo: 'escolha',
+        texto: 'Caso não possua diagnóstico, você gostaria de receber orientações sobre sinais que possam indicar a necessidade de uma avaliação profissional?',
+        resumo: 'Quer orientações sobre sinais para avaliação', opcoes: SIM_NAO,
+        nota: 'Importante: a drenagem linfática não substitui avaliação e diagnóstico médico.' },
+      { id: 'drenagemAntes', tema: 'Histórico e experiência', semAtalho: true, tipo: 'escolha', texto: 'Você já realizou sessões de drenagem linfática anteriormente?', resumo: 'Já fez drenagem antes',
+        opcoes: ['Sim, já realizei', 'Não, será minha primeira experiência'] },
+      { id: 'gostouAntes', tema: 'Histórico e experiência', opcional: true, tipo: 'lista', itens: 3,
+        texto: 'Se já realizou, conte-nos até 3 aspectos ou experiências que você mais gostou nas drenagens anteriores:', resumo: 'O que mais gostou' },
+      { id: 'naoGostouAntes', tema: 'Histórico e experiência', opcional: true, tipo: 'lista', itens: 3,
+        texto: 'Agora, conte-nos até 3 aspectos ou experiências que você não gostou ou que gostaria que fossem diferentes:', resumo: 'O que não gostou / mudaria' },
+
+      // ── Cuidados de saúde
+      { id: 'tromboseDor', tema: 'Cuidados de saúde', alerta: true, tipo: 'escolha', texto: 'Já teve trombose ou está com dor na panturrilha?', resumo: 'Trombose / dor na panturrilha', opcoes: SIM_NAO },
+      { id: 'febreInfeccao', tema: 'Cuidados de saúde', alerta: true, tipo: 'escolha', texto: 'Está com febre, infecção ou inflamação ativa?', resumo: 'Febre / infecção / inflamação', opcoes: SIM_NAO },
+      { id: 'linfonodos', tema: 'Cuidados de saúde', alerta: true, tipo: 'escolha', texto: 'Já retirou linfonodos?', resumo: 'Linfonodos retirados', opcoes: SIM_NAO },
+
+      // ── Personalização da sua experiência
+      { id: 'bioimpedancia', tema: 'Personalização da sua experiência', semAtalho: true, tipo: 'escolha', texto: 'Você gostaria de ganhar uma avaliação física por bioimpedância?', resumo: 'Quer avaliação por bioimpedância',
+        opcoes: ['Sim, gostaria', 'Não, neste momento'] },
+      { id: 'tipoCreme', tema: 'Personalização da sua experiência', tipo: 'escolha', texto: 'Durante sua sessão, qual tipo de creme você prefere?', resumo: 'Creme preferido',
+        opcoes: ['Creme neutro', 'Creme com termoativador'],
+        nota: 'Neutro: sem ação termoativadora. Termoativador: proporciona sensação de aquecimento durante a aplicação.' },
+      { id: 'sensibilidadeCosmeticos', tema: 'Personalização da sua experiência', alerta: true, tipo: 'sim-qual',
+        texto: 'Possui alguma sensibilidade, alergia ou preferência relacionada a produtos cosméticos?', resumo: 'Sensibilidade / preferência com cosméticos',
+        opcoes: ['Não', 'Sim'], detalhePlaceholder: 'Qual?', detalheResumo: 'Qual sensibilidade / preferência' },
+      { id: 'expectativaDrenagem', tema: 'Personalização da sua experiência', tipo: 'multipla', texto: 'O que você espera alcançar com a drenagem linfática?', resumo: 'O que espera alcançar',
+        opcoes: ['Sensação de leveza', 'Redução da sensação de inchaço', 'Bem-estar e relaxamento', 'Cuidados corporais', 'Auxílio em cuidados pós-operatórios, mediante liberação profissional'],
+        outro: 'Outro: escreva aqui (opcional)' },
+      { id: 'posOperatorio', tema: 'Personalização da sua experiência', opcional: true, tipo: 'texto-longo', texto: 'Se for pós-operatório: qual cirurgia, em que data, e tem liberação médica?', resumo: 'Pós-operatório',
         placeholder: 'Deixe em branco se não for pós-operatório' },
-      { id: 'tromboseDor', alerta: true, tipo: 'escolha', texto: 'Já teve trombose ou está com dor na panturrilha?', resumo: 'Trombose / dor na panturrilha', opcoes: SIM_NAO },
-      { id: 'febreInfeccao', alerta: true, tipo: 'escolha', texto: 'Está com febre, infecção ou inflamação ativa?', resumo: 'Febre / infecção / inflamação', opcoes: SIM_NAO },
-      { id: 'linfonodos', alerta: true, tipo: 'escolha', texto: 'Já retirou linfonodos ou tem linfedema?', resumo: 'Linfonodos retirados / linfedema', opcoes: SIM_NAO },
+      { id: 'experienciaPersonalizada', tema: 'Personalização da sua experiência', opcional: true, tipo: 'texto-longo',
+        texto: 'Existe algo que você gostaria que eu soubesse para tornar sua experiência mais confortável e personalizada?', resumo: 'Para uma experiência mais confortável',
+        placeholder: 'Escreva aqui, se quiser' },
     ],
   },
   {
