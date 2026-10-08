@@ -1,12 +1,12 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-BR" data-paleta="linho">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Anamnese — Viva Mais Bella</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,500;1,600&family=Jost:wght@400;500;600&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="css/style.css" />
 </head>
 <body>
@@ -14,8 +14,15 @@
 
   <!-- HEADER -->
   <header>
-    <img src="img/foto.jpg" alt="Viva Mais Bella" class="logo-img foto-img" />
-    <p>Ficha de Anamnese</p>
+    <img src="img/logo-vmb.png" alt="Viva Mais Bella — Saúde, Beleza, Bem-estar" class="marca-img marca-clara" />
+    <img src="img/logo-vmb-claro.png" alt="Viva Mais Bella — Saúde, Beleza, Bem-estar" class="marca-img marca-escura" />
+    <div class="header-terapeuta">
+      <img src="img/foto.jpg" alt="Rauana Ferreira" class="foto-img" />
+      <div class="header-terapeuta-texto">
+        <p class="header-titulo">Ficha de Anamnese</p>
+        <p class="header-sub">com Rauana Ferreira</p>
+      </div>
+    </div>
     <p class="header-servicos" id="headerServicos"></p>
   </header>
 
@@ -126,7 +133,7 @@
           <div class="pagina" id="paginaFinal" data-titulo="Finalização">
           <div class="field produtos-field" id="produtosField" style="display:none;">
             <div class="produtos-banner">
-              <div class="produtos-banner-icon">💧</div>
+              <div class="produtos-banner-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5c3 3.6 6 7.2 6 10.5a6 6 0 0 1-12 0c0-3.3 3-6.9 6-10.5z"/><path d="M9.5 14.5a2.6 2.6 0 0 0 2.5 2.5"/></svg></div>
               <div class="produtos-banner-text">
                 <strong>Você gostaria de conhecer alguns produtos que vão te ajudar no seu estágio de retenção hídrica e sobrepeso?</strong>
                 <span>Nossa consultora pode te indicar soluções personalizadas.</span>
@@ -137,7 +144,7 @@
               <label class="pill"><input type="radio" name="interesseProdutos" value="Não" data-cond="condProdutos" /><label>Não, obrigada</label></label>
             </div>
             <div class="conditional" id="condProdutos">
-              <div class="parabens-msg" style="font-size: 0.95rem; font-family: 'DM Sans', sans-serif; font-style: normal; font-weight: 500; color: #1a1a1a;">Ótimo! Nossa consultora vai te apresentar opções personalizadas para você 💜</div>
+              <div class="parabens-msg" style="font-size: 0.95rem; font-family: 'Jost', sans-serif; font-style: normal; font-weight: 500;">Ótimo! Nossa consultora vai te apresentar opções personalizadas para você.</div>
             </div>
           </div>
 

@@ -626,7 +626,7 @@
         ctx.drawImage(img, sx, sy, lado, lado, borda, borda, T - 2 * borda, T - 2 * borda);
         ctx.restore();
         ctx.beginPath(); ctx.arc(T / 2, T / 2, T / 2 - borda / 2, 0, Math.PI * 2);
-        ctx.lineWidth = borda; ctx.strokeStyle = '#ecc5d4'; ctx.stroke();
+        ctx.lineWidth = borda; ctx.strokeStyle = '#E6D6C4'; ctx.stroke();
         resolve({ data: c.toDataURL('image/png'), proporcao: 1 });
       };
       img.onerror = () => resolve(null);
@@ -648,7 +648,8 @@
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF({ unit: 'mm', format: 'a4' });
     const W = 210, H = 297, M = 16, CW = W - 2 * M;
-    const ROSA = [200, 114, 142], ROSA_CLARO = [253, 240, 245], BORDA = [236, 197, 212], CINZA = [107, 114, 128], ESCURO = [17, 24, 39];
+    // Cores da marca (paleta Linho): ROSA = destaque cacau, ROSA_CLARO = fundo do bloco de atenção
+    const ROSA = [107, 74, 53], ROSA_CLARO = [241, 226, 207], BORDA = [226, 216, 204], CINZA = [122, 101, 86], ESCURO = [59, 38, 22];
     const limpar = t => String(t).replace(/[—–]/g, '-').replace(/[^\x00-\xFF]/g, '').trim();
     let y = M;
     const garantir = h => { if (y + h > H - M - 6) { doc.addPage(); y = M; } };
