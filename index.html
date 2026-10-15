@@ -4,12 +4,37 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Anamnese — Viva Mais Bella</title>
+  <meta name="theme-color" content="#EEE8E0" />
+  <link rel="icon" href="img/icon-512.png" />
+  <link rel="apple-touch-icon" href="img/icon-512.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,500;1,600&family=Jost:wght@400;500;600&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="css/style.css" />
 </head>
 <body>
+<script>
+/* Abertura em vídeo, igual à do app: uma vez por visita; um toque pula */
+(function () {
+  let visto = false;
+  try { visto = !!sessionStorage.getItem('vmb-ficha-video'); sessionStorage.setItem('vmb-ficha-video', '1'); } catch (e) {}
+  if (visto) return;
+  const el = document.createElement('div');
+  el.id = 'abertura';
+  el.setAttribute('aria-label', 'Viva Mais Bella. Toque para pular.');
+  el.innerHTML = '<video src="img/abertura.mp4" muted playsinline autoplay preload="auto"></video><small>TOQUE PARA PULAR</small>';
+  document.body.appendChild(el);
+  const v = el.querySelector('video');
+  let fechado = false;
+  const fechar = () => { if (fechado) return; fechado = true; el.classList.add('sai'); setTimeout(() => el.remove(), 500); };
+  v.addEventListener('ended', fechar);
+  v.addEventListener('error', fechar);
+  el.addEventListener('click', fechar);
+  setTimeout(fechar, 8000);
+  const p = v.play && v.play();
+  if (p && p.catch) p.catch(fechar);
+})();
+</script>
 <div class="shell">
 
   <!-- HEADER -->
@@ -65,8 +90,9 @@
             <input type="text" id="nome" placeholder="Seu nome completo" autocomplete="name" />
           </div>
           <div class="field">
-            <label>Idade <span class="req">*</span></label>
-            <input type="number" id="idade" placeholder="Ex: 32" min="1" max="120" />
+            <label>Data de nascimento <span class="req">*</span></label>
+            <input type="text" id="nascimento" inputmode="numeric" placeholder="DD/MM/AAAA" maxlength="10" autocomplete="bday" oninput="mascaraData(this)" />
+            <span class="idade-calc" id="idadeCalc"></span>
           </div>
           <div class="field">
             <label>Telefone / WhatsApp <span class="req">*</span></label>
@@ -177,7 +203,7 @@
             <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
           </div>
           <h2>Tudo pronto!</h2>
-          <p>Revise suas respostas abaixo e toque em "Gerar PDF e enviar". Depois, escolha o WhatsApp e envie para a Viva Mais Bella.</p>
+          <p>Revise suas respostas abaixo e toque em "Enviar ficha". Ela chega direto para a Rauana.</p>
         </div>
 
         <div class="summary" id="summaryContent"></div>
@@ -187,11 +213,42 @@
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
             Editar
           </button>
-          <button class="btn-next" id="btnPdf" onclick="enviarPDF()">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="12" x2="12" y2="18"/><polyline points="9 15 12 18 15 15"/></svg>
-            <span>Gerar PDF e enviar</span>
+          <button class="btn-next" id="btnEnviar" onclick="enviarFicha()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2 11 13"/><path d="M22 2 15 22l-4-9-9-4z"/></svg>
+            <span>Enviar ficha</span>
           </button>
         </div>
+        <button class="btn-pdf" id="btnPdf" onclick="baixarPDF()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="12" x2="12" y2="18"/><polyline points="9 15 12 18 15 15"/></svg>
+          <span>Baixar PDF da ficha</span>
+        </button>
+      </div>
+
+      <!-- STEP AGENDAR — logo depois de enviar a ficha -->
+      <div class="step" id="stepAgendar">
+        <div class="confirm-header">
+          <div class="confirm-icon"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></div>
+          <h2>Ficha enviada!</h2>
+          <p>Agora escolha o melhor dia e horário para a sua primeira sessão. A Rauana confirma pelo WhatsApp.</p>
+        </div>
+        <div id="agenda"></div>
+        <div class="btn-row agenda-bts">
+          <button class="btn-back" onclick="combinarDepois()">Combino depois</button>
+          <button class="btn-next" id="btnPedir" onclick="pedirHorario()" disabled><span>Enviar pedido</span></button>
+        </div>
+        <button class="btn-pdf" onclick="baixarPDF()"><span>Baixar PDF da ficha</span></button>
+      </div>
+
+      <!-- STEP FIM -->
+      <div class="step" id="stepFim">
+        <div class="confirm-header">
+          <div class="confirm-icon"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></div>
+          <h2 id="fimTitulo">Tudo certo!</h2>
+          <p id="fimTexto"></p>
+        </div>
+        <div class="fim-pedido" id="fimPedido" hidden></div>
+        <button class="btn-pdf" onclick="baixarPDF()"><span>Baixar PDF da ficha</span></button>
+        <p class="assinatura-final">Viva Mais Bella · Saúde, Beleza, Bem-estar</p>
       </div>
 
     </div><!-- /.card -->

@@ -55,6 +55,10 @@ const I = (n, sw) => `<svg class="i" viewBox="0 0 24 24"${sw ? ` style="stroke-w
 
 const fDur = m => { m = Number(m) || 60; const h = Math.floor(m / 60), r = m % 60; return h ? `${h}h${r ? pad(r) : ''}` : `${r} min`; };
 const durNome = n => { const p = procPorNome(n); return p && p.duracao_min ? p.duracao_min : 60; };
+const idadeDe = p => { if (!p) return null; if (p.data_nascimento) { const n = new Date(p.data_nascimento + 'T12:00'), h = new Date(); let i = h.getFullYear() - n.getFullYear(); if (h.getMonth() < n.getMonth() || (h.getMonth() === n.getMonth() && h.getDate() < n.getDate())) i--; return i; } return p.idade || null; };
+const nascBR = iso => iso ? iso.split('-').reverse().join('/') : '';
+const lerNasc = t => { const m = String(t || '').match(/^(\d{2})\/(\d{2})\/(\d{4})$/); if (!m) return null; const d = new Date(+m[3], +m[2] - 1, +m[1]); if (d.getDate() !== +m[1] || d.getMonth() !== +m[2] - 1 || d > new Date() || +m[3] < 1900) return null; return `${m[3]}-${m[2]}-${m[1]}`; };
+const mascaraNasc = el => { const d = el.value.replace(/\D/g, '').slice(0, 8); el.value = d.length > 4 ? `${d.slice(0, 2)}/${d.slice(2, 4)}/${d.slice(4)}` : d.length > 2 ? `${d.slice(0, 2)}/${d.slice(2)}` : d; };
 const moeda = n => 'R$ ' + Number(n).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const urlFoto = f => (f && st.fotos[f]) || '';
 const av = (nome, foto, cls, estilo) => { const u = urlFoto(foto); return `<div class="av ${cls || ''}"${estilo ? ` style="${estilo}"` : ''}>${u ? `<img src="${esc(u)}" alt="">` : esc(ini(nome))}</div>`; };
@@ -117,11 +121,12 @@ function aplicarPicker(dia) {
 const dataLonga = iso => { const t = new Date(iso).toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' }).replace('-feira', ''); return t.charAt(0).toUpperCase() + t.slice(1); };
 /* ═══ PEDIDOS DE HORÁRIO (feitos pela cliente na página dela) ═══ */
 function cartaoPedido(ped) {
-  const pl = st.planos.find(x => x.id === ped.plano_id); if (!pl) return '';
-  const p = paciente(pl.paciente_id), s = info(pl).proxima, t = new Date(ped.data_hora).getTime();
-  const choque = st.planos.filter(x => x.status === 'ativo' && x.id !== pl.id).flatMap(x => x.sessoes.filter(z => z.status === 'agendada' && z.data_hora && Math.abs(new Date(z.data_hora).getTime() - t) < 3600e3).map(z => ({ x, z })))[0];
+  const pl = ped.plano_id ? st.planos.find(x => x.id === ped.plano_id) : null; if (ped.plano_id && !pl) return '';
+  const p = paciente(pl ? pl.paciente_id : ped.paciente_id); if (!p) return '';
+  const s = pl && info(pl).proxima, t = new Date(ped.data_hora).getTime();
+  const choque = st.planos.filter(x => x.status === 'ativo' && (!pl || x.id !== pl.id)).flatMap(x => x.sessoes.filter(z => z.status === 'agendada' && z.data_hora && Math.abs(new Date(z.data_hora).getTime() - t) < 3600e3).map(z => ({ x, z })))[0];
   return `<div class="card stack pedido-card">
-    <div class="row">${av(p.nome, p.foto)}<div style="flex:1;min-width:0"><b style="font-weight:500">${esc(p.nome)}</b><div class="ink2" style="font-size:13px">${esc(pl.procedimento)}${s ? ` · ${s.numero}ª sessão` : ''}</div></div><span class="badge b-warn">PEDIDO</span></div>
+    <div class="row">${av(p.nome, p.foto)}<div style="flex:1;min-width:0"><b style="font-weight:500">${esc(p.nome)}</b><div class="ink2" style="font-size:13px">${esc(pl ? pl.procedimento : ped.procedimento || 'Primeira sessão')}${s ? ` · ${s.numero}ª sessão` : pl ? '' : ' · 1ª sessão'}</div></div><span class="badge b-warn">${pl ? 'PEDIDO' : 'NOVA'}</span></div>
     <div class="pedido-quando">${I('cal')}<div><b>${dataLonga(ped.data_hora)}</b><span>às ${fHora(ped.data_hora)}</span></div></div>
     ${choque ? `<div class="alerta" style="padding:8px 12px;font-size:13px">Já tem sessão de ${esc(primeiro(paciente(choque.x.paciente_id).nome))} às ${fHora(choque.z.data_hora)} nesse dia.</div>` : ''}
     <div class="row" style="gap:8px"><button class="btn sm" style="flex:1" data-acao="pedido-confirmar" data-id="${ped.id}">${I('check', 2)} Confirmar</button><button class="btn sm ghost" style="flex:1" data-acao="pedido-mudar" data-id="${ped.id}">Mudar data</button></div></div>`;
@@ -227,11 +232,11 @@ function fecharSheet() { $('#sheet').innerHTML = ''; }
 /* ═══ DADOS ═══ */
 async function carregar() {
   const [p, pl, f, pr, pd, de, fe] = await Promise.all([
-    sb.from('pacientes').select('id,nome,telefone,idade,endereco,foto,criado_em').order('nome'),
+    sb.from('pacientes').select('id,nome,telefone,idade,data_nascimento,endereco,foto,criado_em').order('nome'),
     sb.from('planos').select('id,paciente_id,procedimento,total_sessoes,valor,status,codigo_publico,criado_em,sessoes(id,numero,data_hora,status,observacao,concluida_em)').order('criado_em', { ascending: false }),
     sb.from('anamneses').select('id,paciente_id,servicos,pontos_atencao,enviada_em').order('enviada_em', { ascending: false }),
     sb.from('procedimentos').select('id,nome,valor,duracao_min').order('nome'),
-    sb.from('pedidos_horario').select('id,plano_id,data_hora,criado_em').eq('status', 'pendente').order('data_hora'),
+    sb.from('pedidos_horario').select('id,plano_id,paciente_id,procedimento,data_hora,criado_em').eq('status', 'pendente').order('data_hora'),
     sb.from('dias_especiais').select('dia,horas').gte('dia', diaKey(new Date())),
     sb.from('feriados').select('dia,nome').gte('dia', diaKey(new Date())).order('dia'),
   ]);
@@ -239,7 +244,7 @@ async function carregar() {
   st.pacientes = p.data; st.planos = pl.data; st.fichas = f.data;
   st.planos.forEach(x => x.sessoes.sort((a, b) => a.numero - b.numero));
   st.procs = pr.error ? [] : pr.data;
-  st.pedidos = pd.error ? [] : pd.data.filter(x => st.planos.some(pl => pl.id === x.plano_id && pl.status === 'ativo'));
+  st.pedidos = pd.error ? [] : pd.data.filter(x => x.plano_id ? st.planos.some(pl => pl.id === x.plano_id && pl.status === 'ativo') : st.pacientes.some(p => p.id === x.paciente_id));
   st.especiais = de.error ? [] : de.data.map(x => ({ dia: x.dia, horas: (x.horas || []).map(h => h.slice(0, 5)) }));
   st.feriados = fe.error ? [] : fe.data;
   st.carregadoEm = Date.now();
@@ -290,7 +295,7 @@ function mensagemPlano(pl) {
 /* ═══ ROTAS ═══ */
 function rota() { return (location.hash || '#/inicio').slice(2).split('/'); }
 function ir(h) { if (location.hash === h) render(); else location.hash = h; }
-window.addEventListener('hashchange', () => { fecharPicker(); fecharSheet(); render(); });
+window.addEventListener('hashchange', () => { fecharPicker(); fecharSheet(); if (st.prefill && rota()[0] !== 'novo-plano') st.prefill = null; render(); });
 
 function render() {
   const app = $('#app');
@@ -424,7 +429,7 @@ function vPaciente(id) {
   return `<div class="wrap">
     <header class="row" style="justify-content:space-between"><a class="icon-btn plain" href="#/pacientes" aria-label="Voltar">${I('back')}</a><span style="font-weight:500">Paciente</span><button class="icon-btn plain" data-acao="editar-paciente" data-id="${id}" aria-label="Editar dados da paciente">${I('edit')}</button></header>
     <div class="row"><button class="av-btn" data-acao="foto" data-tipo="paciente" data-id="${p.id}" aria-label="Foto da paciente">${av(p.nome, p.foto, 'g')}<span class="cam">${I('cam')}</span></button><div style="min-width:0"><h1 class="t" style="font-size:28px">${esc(p.nome)}</h1>
-      <div class="ink2" style="font-size:14px">${esc(fTel(p.telefone))}${p.idade ? ' · ' + p.idade + ' anos' : ''}</div>
+      <div class="ink2" style="font-size:14px">${esc(fTel(p.telefone))}${idadeDe(p) ? ' · ' + idadeDe(p) + ' anos' : ''}${p.data_nascimento ? ' · nasc. ' + nascBR(p.data_nascimento) : ''}</div>
       ${p.endereco ? `<div class="muted" style="font-size:13px">${esc(p.endereco)}</div>` : ''}</div></div>
     <a class="btn soft" href="${waLink(p.telefone)}" target="_blank" rel="noopener">${I('wa')} Conversar no WhatsApp</a>
     <section class="card stack"><div class="tag">Ficha de anamnese</div>
@@ -475,7 +480,9 @@ function vPlano(id) {
 
 function vNovoPlano(pacId) {
   const p = pacId && paciente(pacId), f = p && fichaDe(p.id);
-  const nomes = nomesProc(), sug = f && (f.servicos || [])[0] ? nomes.find(x => x.toLowerCase() === f.servicos[0].toLowerCase()) : null, proc0 = sug || nomes[0] || '';
+  const pf = st.prefill && p && st.prefill.pedido.paciente_id === p.id ? st.prefill : null;
+  const pedProc = pf && pf.pedido.procedimento ? nomesProc().find(x => x.toLowerCase() === pf.pedido.procedimento.toLowerCase()) || pf.pedido.procedimento : null;
+  const nomes = nomesProc(), sug = pedProc || (f && (f.servicos || [])[0] ? nomes.find(x => x.toLowerCase() === f.servicos[0].toLowerCase()) : null), proc0 = sug || nomes[0] || '';
   const ops = st.pacientes.map(x => `<option value="${x.id}" ${p && x.id === p.id ? 'selected' : ''}>${esc(x.nome)}</option>`).join('');
   return `<div class="wrap" style="padding-bottom:40px">
     <header class="row" style="justify-content:space-between"><button class="icon-btn plain" data-acao="voltar" aria-label="Cancelar">${I('x')}</button><span style="font-weight:500">Novo plano</span><span style="width:44px"></span></header>
@@ -483,6 +490,7 @@ function vNovoPlano(pacId) {
     <form data-form="novo-plano" class="stack" style="gap:18px">
       <label class="f">Paciente<select class="inp" name="paciente" required><option value="">Escolha a paciente</option>${ops}</select></label>
       <button type="button" class="btn ghost sm" data-acao="nova-paciente" data-origem="plano" style="align-self:flex-start">${I('plus')} Cadastrar nova paciente</button>
+      ${pf ? `<div class="pedido-quando" style="background:var(--warnbg)">${I('cal')}<div><b>${esc(primeiro(p.nome))} pediu ${esc(dataLonga(pf.pedido.data_hora))}</b><span>às ${fHora(pf.pedido.data_hora)}. Monte o plano para confirmar, ou mude a data da 1ª sessão abaixo.</span></div></div>` : ''}
       ${f ? `<div class="alerta" style="background:var(--okbg);color:var(--oktext)">Ficha de anamnese de ${fData(f.enviada_em)}: ${esc((f.servicos || []).join(', '))}</div>` : ''}
       <div class="stack" style="gap:8px"><span class="tag">Procedimento</span>
         ${chipsProc(proc0)}
@@ -491,7 +499,7 @@ function vNovoPlano(pacId) {
         <div class="row" style="gap:4px"><button type="button" class="icon-btn" data-acao="qtd" data-v="-1" aria-label="Menos uma sessão">−</button>
         <input name="qtd" type="number" min="1" max="50" value="5" class="serif" style="width:48px;text-align:center;font-size:30px;font-weight:700;border:0;background:transparent" aria-label="Número de sessões">
         <button type="button" class="icon-btn acc" style="background:var(--ink)" data-acao="qtd" data-v="1" aria-label="Mais uma sessão">+</button></div></div>
-      <div class="f">1ª sessão (opcional)${campoDH('', '09:00', true, 'Escolher data e horário')}</div>
+      <div class="f">1ª sessão${pf ? '' : ' (opcional)'}${pf ? campoDH(diaKey(new Date(pf.pedido.data_hora)), fHora(pf.pedido.data_hora), false) : campoDH('', '09:00', true, 'Escolher data e horário')}</div>
       <label class="f">Valor do pacote (opcional)<input class="inp" name="valor" inputmode="decimal" placeholder="R$ 0,00" value="${valorSug(proc0, 5)}"><span class="muted" style="font-size:12px;font-weight:400;letter-spacing:0">Calculado pelo valor da sessão vezes o número de sessões. Pode alterar.</span></label>
       <p class="ink2" style="font-size:13px;text-align:center">As demais datas você agenda ao concluir cada sessão.</p>
       <button class="btn" type="submit">Criar plano</button>
@@ -514,7 +522,7 @@ function ocupacao(dia, hora) {
     const dur = durNome(pl.procedimento) * 60e3;
     for (const s of pl.sessoes) if (s.status === 'agendada' && s.data_hora) { const a = new Date(s.data_hora).getTime(); if (a < fim && a + dur > ini) return { tipo: 'sessao', nome: primeiro(paciente(pl.paciente_id).nome) }; }
   }
-  for (const pd of st.pedidos) { const pl = st.planos.find(x => x.id === pd.plano_id); if (!pl) continue; const a = new Date(pd.data_hora).getTime(), dur = durNome(pl.procedimento) * 60e3; if (a < fim && a + dur > ini) return { tipo: 'pedido', nome: primeiro(paciente(pl.paciente_id).nome) }; }
+  for (const pd of st.pedidos) { const pl = st.planos.find(x => x.id === pd.plano_id), pac = paciente(pl ? pl.paciente_id : pd.paciente_id); if (!pac) continue; const a = new Date(pd.data_hora).getTime(), dur = durNome(pl ? pl.procedimento : pd.procedimento) * 60e3; if (a < fim && a + dur > ini) return { tipo: 'pedido', nome: primeiro(pac.nome) }; }
   return null;
 }
 const mesmoConjunto = (a, b) => a.length === b.length && a.every(x => b.includes(x));
@@ -769,7 +777,7 @@ function sheetEditarPaciente(id) {
       <button type="button" class="row" data-acao="foto" data-tipo="paciente" data-id="${id}" style="border:0;background:transparent;cursor:pointer;gap:14px;padding:0;text-align:left;color:inherit">${av(p.nome, p.foto, 'g')}<span class="ink2" style="font-size:14px;text-decoration:underline">${p.foto ? 'Trocar foto' : 'Adicionar foto'}</span></button>
       <label class="f">Nome completo<input class="inp" name="nome" value="${esc(p.nome)}" required autocomplete="off"></label>
       <label class="f">Telefone / WhatsApp<input class="inp" name="telefone" type="tel" inputmode="tel" value="${esc(fTel(p.telefone))}" required></label>
-      <label class="f">Idade<input class="inp" name="idade" type="number" min="1" max="120" value="${p.idade || ''}"></label>
+      <label class="f">Data de nascimento<input class="inp" name="nascimento" inputmode="numeric" placeholder="DD/MM/AAAA" maxlength="10" value="${nascBR(p.data_nascimento)}" data-mascara="nasc"></label>
       <label class="f">Endereço<textarea class="inp" name="endereco" placeholder="Rua, número, bairro, cidade" style="min-height:70px">${esc(p.endereco || '')}</textarea></label>
       <button class="btn" type="submit">Salvar</button>
       <button class="btn ghost" type="button" data-acao="excluir-paciente" data-id="${id}" style="color:var(--warntext)">${I('trash')} Excluir paciente</button></form>`);
@@ -780,7 +788,7 @@ function sheetNovaPaciente(origem) {
     <form data-form="nova-paciente" data-origem="${origem || ''}" class="stack" style="gap:14px">
       <label class="f">Nome completo<input class="inp" name="nome" required autocomplete="off"></label>
       <label class="f">Telefone / WhatsApp<input class="inp" name="telefone" type="tel" inputmode="tel" placeholder="(71) 9 0000-0000" required></label>
-      <label class="f">Idade (opcional)<input class="inp" name="idade" type="number" min="1" max="120"></label>
+      <label class="f">Data de nascimento (opcional)<input class="inp" name="nascimento" inputmode="numeric" placeholder="DD/MM/AAAA" maxlength="10" data-mascara="nasc"></label>
       <label class="f">Endereço (opcional)<input class="inp" name="endereco" placeholder="Rua, número, bairro, cidade"></label>
       <button class="btn" type="submit">Cadastrar</button></form>`);
 }
@@ -914,6 +922,13 @@ document.addEventListener('click', async e => {
   if (a === 'avisos-desativar') return desativarAvisos();
   if (a === 'avisos-depois') { st.ui.semConvite = true; return render(); }
   if (a === 'avisos-testar') { const { data, error } = await sb.functions.invoke('avisos', { body: { acao: 'teste' } }); return toast(error ? 'Não foi possível enviar o teste.' : data && data.enviados ? 'Aviso de teste enviado. Deve chegar em instantes.' : 'Nenhum celular ativo encontrado. Ative de novo.'); }
+  if ((a === 'pedido-confirmar' || a === 'pedido-mudar') && (st.pedidos.find(x => x.id === id) || {}).plano_id === null) {
+    const ped = st.pedidos.find(x => x.id === id);
+    st.prefill = { pedido: ped, mudar: a === 'pedido-mudar' };
+    ir('#/novo-plano/' + ped.paciente_id);
+    if (a === 'pedido-mudar') setTimeout(() => { const c = document.querySelector('form[data-form="novo-plano"] .campo-wrap'); if (c) abrirPicker(c); }, 350);
+    return;
+  }
   if (a === 'pedido-confirmar') {
     const ped = st.pedidos.find(x => x.id === id), pl = ped && st.planos.find(x => x.id === ped.plano_id), s = pl && info(pl).proxima;
     if (!s) return toast('Este plano não tem sessão para agendar.');
@@ -1038,6 +1053,7 @@ document.addEventListener('input', e => {
   const el = e.target;
   if (el.id === 'busca') { st.ui.busca = el.value; listarPacientes(); }
   if (el.id === 'busca-proc') { st.ui.buscaProc = el.value; listarProcs(); }
+  if (el.dataset && el.dataset.mascara === 'nasc') mascaraNasc(el);
   const form = el.closest && el.closest('form[data-form="novo-plano"],form[data-form="editar-plano"]'); if (!form) return;
   if (el.name === 'valor') form.dataset.valorManual = el.value.trim() ? '1' : '';
   if (el.name === 'qtd') sugerirValor(form);
@@ -1089,10 +1105,12 @@ async function enviarForm(tipo, form) {
   if (tipo === 'nova-paciente') {
     const tel = telDigitos(v('telefone'));
     if (tel.length < 10 || tel.length > 13) return toast('Confira o telefone, com DDD.');
-    const idade = parseInt(v('idade'), 10);
+    const nasc = v('nascimento') ? lerNasc(v('nascimento')) : null;
+    if (v('nascimento') && !nasc) return toast('Confira a data de nascimento (DD/MM/AAAA).');
+    const idade = idadeDe({ data_nascimento: nasc });
     let novo = null;
     const ok = await salvar(async () => {
-      const { data, error } = await sb.from('pacientes').insert({ nome: v('nome'), telefone: tel, idade: idade > 0 ? idade : null, endereco: v('endereco') || null }).select('id').single();
+      const { data, error } = await sb.from('pacientes').insert({ nome: v('nome'), telefone: tel, data_nascimento: nasc, idade: idade > 0 ? idade : null, endereco: v('endereco') || null }).select('id').single();
       if (error) { if (error.code === '23505') { toast('Já existe uma paciente com esse telefone.'); throw Object.assign(error, { avisado: true }); } throw error; }
       novo = data;
     }, 'Paciente cadastrada.');
@@ -1111,8 +1129,14 @@ async function enviarForm(tipo, form) {
       const { data, error } = await sb.from('planos').insert({ paciente_id: pac, procedimento: proc, total_sessoes: qtd, valor }).select('id').single();
       if (error) throw error; novo = data;
       if (v('dia')) { const r = await sb.from('sessoes').update({ data_hora: paraISO(v('dia'), v('hora')), status: 'agendada' }).eq('plano_id', data.id).eq('numero', 1); if (r.error) throw r.error; }
+      const pf = st.prefill && st.prefill.pedido.paciente_id === pac ? st.prefill : null;
+      if (pf) { const quando = v('dia') ? paraISO(v('dia'), v('hora')) : null; await upd('pedidos_horario', { status: quando === new Date(pf.pedido.data_hora).toISOString() ? 'confirmado' : 'alterado', respondido_em: new Date().toISOString(), plano_id: data.id }, pf.pedido.id); }
     }, 'Plano criado.');
-    if (ok) ir('#/plano/' + novo.id);
+    if (!ok) return;
+    const pf = st.prefill && st.prefill.pedido.paciente_id === pac ? st.prefill : null;
+    st.prefill = null;
+    ir('#/plano/' + novo.id);
+    if (pf && v('dia')) { const quando = paraISO(v('dia'), v('hora')), igual = quando === new Date(pf.pedido.data_hora).toISOString(); setTimeout(() => avisoCliente(st.planos.find(x => x.id === novo.id), 1, quando, igual ? null : pf.pedido.data_hora), 50); }
     return;
   }
   if (tipo === 'anamnese') {
@@ -1127,7 +1151,7 @@ async function enviarForm(tipo, form) {
     const resumo = [
       { titulo: 'Atenção', destaque: true, linhas: pontos.length ? pontos.map(x => [x.pergunta, x.resposta]) : [['Nenhum ponto de atenção informado', '']] },
       { titulo: 'Serviços', linhas: [['Serviços escolhidos', servs.map(s => s.nome).join(', ')]] },
-      { titulo: 'Dados Pessoais', linhas: [['Nome completo', p.nome], ['Idade', p.idade ? String(p.idade) : '—'], ['Telefone / WhatsApp', fTel(p.telefone)],
+      { titulo: 'Dados Pessoais', linhas: [['Nome completo', p.nome], ['Data de nascimento', p.data_nascimento ? `${nascBR(p.data_nascimento)} (${idadeDe(p)} anos)` : (p.idade ? `${p.idade} anos` : '—')], ['Telefone / WhatsApp', fTel(p.telefone)],
         ...(peso > 0 ? [['Peso', peso + ' kg']] : []), ...(alt > 0 ? [['Altura', alt + ' cm']] : []), ...(imc ? [['IMC', imc]] : [])] },
       { titulo: 'Ficha Geral de Saúde', linhas: FICHA_GERAL.flatMap(q => linhasResp(q, r)) },
       ...blocos.map(b => ({ titulo: b.servico.nome, linhas: b.perguntas.flatMap(q => linhasResp(q, r)) })),
@@ -1201,9 +1225,11 @@ async function enviarForm(tipo, form) {
   if (tipo === 'editar-paciente') {
     const tel = telDigitos(v('telefone'));
     if (tel.length < 10 || tel.length > 13) return toast('Confira o telefone, com DDD.');
-    const idade = parseInt(v('idade'), 10);
+    const nasc = v('nascimento') ? lerNasc(v('nascimento')) : null;
+    if (v('nascimento') && !nasc) return toast('Confira a data de nascimento (DD/MM/AAAA).');
+    const idade = idadeDe({ data_nascimento: nasc });
     if (await salvar(async () => {
-      const { error } = await sb.from('pacientes').update({ nome: v('nome'), telefone: tel, idade: idade > 0 ? idade : null, endereco: v('endereco') || null, atualizado_em: new Date().toISOString() }).eq('id', form.dataset.id);
+      const { error } = await sb.from('pacientes').update({ nome: v('nome'), telefone: tel, data_nascimento: nasc, idade: idade > 0 ? idade : null, endereco: v('endereco') || null, atualizado_em: new Date().toISOString() }).eq('id', form.dataset.id);
       if (error) { if (error.code === '23505') { toast('Já existe outra paciente com esse telefone.'); throw Object.assign(error, { avisado: true }); } throw error; }
     }, 'Dados atualizados.')) { fecharSheet(); render(); }
     return;

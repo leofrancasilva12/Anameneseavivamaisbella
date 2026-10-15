@@ -411,10 +411,10 @@
     }
     if (tela.step === 'step2') {
       const nome = document.getElementById('nome').value.trim();
-      const idade = document.getElementById('idade').value.trim();
+      const nasc = lerNascimento();
       const tel = document.getElementById('telefone').value.trim();
       if (!nome) { showToast('Por favor, informe seu nome completo.'); return false; }
-      if (!idade) { showToast('Por favor, informe sua idade.'); return false; }
+      if (!nasc) { showToast('Informe sua data de nascimento (DD/MM/AAAA).'); return false; }
       if (!tel) { showToast('Por favor, informe seu telefone/WhatsApp.'); return false; }
     }
     if (tela.pagina && tela.pagina.id === 'paginaFinal') {
@@ -580,7 +580,7 @@
         title: 'Dados Pessoais', icon: '📋',
         rows: [
           ['Nome completo', getVal('nome')],
-          ['Idade', getVal('idade')],
+          ['Data de nascimento', textoNascimento()],
           ['Telefone / WhatsApp', getVal('telefone')],
           ...(peso !== '—' ? [['Peso', peso + ' kg']] : []),
           ...(altura !== '—' ? [['Altura', altura + ' cm']] : []),
@@ -635,11 +635,11 @@
 
   function montarFichaParaBanco() {
     guardarRespostas();
-    const idade = parseInt(getVal('idade'), 10);
+    const nasc = lerNascimento();
     return {
       p_nome: getVal('nome') === '—' ? '' : getVal('nome'),
       p_telefone: getVal('telefone') === '—' ? '' : getVal('telefone'),
-      p_idade: Number.isFinite(idade) ? idade : null,
+      p_data_nascimento: nasc ? nasc.iso : null,
       p_servicos: servicosEscolhidos().map(s => s.nome),
       p_respostas: respostas,
       p_resumo: montarDadosResumo().map(s => ({ titulo: s.title, destaque: !!s.destaque, linhas: s.rows })),
@@ -649,24 +649,155 @@
     };
   }
 
-  // Não espera a resposta: o envio do PDF não pode ficar travado esperando o banco.
-  // "keepalive" garante que a gravação termina mesmo se a cliente sair da página.
-  function gravarFichaNoBanco() {
+  // Grava a ficha e devolve o código para escolher o horário da primeira sessão
+  const ANON_JWT = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN3YXZ1aWxheXhocmZhc3dscXRnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE0OTcyOTIsImV4cCI6MjEwNzA3MzI5Mn0.Jai6jPHC86vH52dAfr0iz0fVPPJT6kMvV-u9WFXEozA';
+  let fichaGravada = null;   // { id, codigo }
+  async function rpc(nome, corpo) {
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/rpc/${nome}`, { method: 'POST', headers: { 'Content-Type': 'application/json', apikey: SUPABASE_CHAVE_PUBLICA }, body: JSON.stringify(corpo) });
+    const j = await r.json().catch(() => null);
+    if (!r.ok) throw Object.assign(new Error((j && j.message) || 'erro'), { codigo: j && j.message });
+    return j;
+  }
+  function avisarRauana(corpo) {
+    fetch(`${SUPABASE_URL}/functions/v1/avisos`, { method: 'POST', headers: { 'Content-Type': 'application/json', apikey: ANON_JWT, Authorization: 'Bearer ' + ANON_JWT }, body: JSON.stringify(corpo), keepalive: true }).catch(() => {});
+  }
+  async function gravarFichaNoBanco() {
+    const corpo = JSON.stringify(montarFichaParaBanco());
+    if (fichaGravada && corpo === ultimaFichaGravada) return fichaGravada;   // mesma ficha: não grava duas vezes
+    const r = await rpc('registrar_anamnese', JSON.parse(corpo));
+    ultimaFichaGravada = corpo;
+    fichaGravada = r;
+    avisarRauana({ acao: 'ficha', id: r.id });
+    return r;
+  }
+
+  async function enviarFicha() {
+    const btn = document.getElementById('btnEnviar'), label = btn.querySelector('span');
+    btn.disabled = true; label.textContent = 'Enviando...';
     try {
-      const corpo = JSON.stringify(montarFichaParaBanco());
-      if (corpo === ultimaFichaGravada) return;   // mesma ficha tocada duas vezes: grava uma só
-      ultimaFichaGravada = corpo;
-      fetch(`${SUPABASE_URL}/rest/v1/rpc/registrar_anamnese`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', apikey: SUPABASE_CHAVE_PUBLICA },
-        body: corpo,
-        keepalive: corpo.length < 60000,
-      }).then(r => {
-        if (!r.ok) { ultimaFichaGravada = ''; r.text().then(t => console.warn('Ficha não gravada:', t)); }
-      }).catch(e => { ultimaFichaGravada = ''; console.warn('Ficha não gravada:', e); });
+      await gravarFichaNoBanco();
+      limparRascunho();
+      abrirAgenda();
     } catch (e) {
       console.warn('Ficha não gravada:', e);
+      showToast('Não foi possível enviar agora. Verifique sua internet e tente de novo.');
+    } finally {
+      btn.disabled = false; label.textContent = 'Enviar ficha';
     }
+  }
+
+  /* ─── DATA DE NASCIMENTO ─── */
+  function mascaraData(el) {
+    const d = el.value.replace(/\D/g, '').slice(0, 8);
+    el.value = d.length > 4 ? `${d.slice(0, 2)}/${d.slice(2, 4)}/${d.slice(4)}` : d.length > 2 ? `${d.slice(0, 2)}/${d.slice(2)}` : d;
+    const n = lerNascimento();
+    document.getElementById('idadeCalc').textContent = n ? `${n.idade} anos` : (d.length === 8 ? 'Confira a data.' : '');
+  }
+  function lerNascimento() {
+    const m = (document.getElementById('nascimento').value || '').match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+    if (!m) return null;
+    const [dd, mm, aa] = [+m[1], +m[2], +m[3]], dt = new Date(aa, mm - 1, dd);
+    if (dt.getFullYear() !== aa || dt.getMonth() !== mm - 1 || dt.getDate() !== dd) return null;
+    const hoje = new Date();
+    let idade = hoje.getFullYear() - aa; if (hoje.getMonth() < mm - 1 || (hoje.getMonth() === mm - 1 && hoje.getDate() < dd)) idade--;
+    if (idade < 1 || idade > 120) return null;
+    return { iso: `${aa}-${String(mm).padStart(2, '0')}-${String(dd).padStart(2, '0')}`, idade };
+  }
+  function textoNascimento() { const n = lerNascimento(); return n ? `${getVal('nascimento')} (${n.idade} anos)` : '—'; }
+
+  /* ─── ESCOLHER HORÁRIO DA PRIMEIRA SESSÃO ─── */
+  const AG = { ano: 0, mes: 0, dia: '', hora: '', livres: {}, carregando: false, enviando: false };
+  const pad2 = n => String(n).padStart(2, '0');
+  const chaveDia = d => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+  const horaDe = t => { const d = new Date(t); return pad2(d.getHours()) + ':' + pad2(d.getMinutes()); };
+  const livresMes = (a, m) => AG.livres[`${a}-${pad2(m + 1)}`] || [];
+  const horasDia = dia => livresMes(+dia.slice(0, 4), +dia.slice(5, 7) - 1).filter(t => chaveDia(new Date(t)) === dia).map(horaDe);
+  const dataLonga = dia => { const t = new Date(dia + 'T12:00').toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' }).replace('-feira', ''); return t.charAt(0).toUpperCase() + t.slice(1); };
+  const SETA_E = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>';
+  const SETA_D = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>';
+
+  async function carregarLivres(a, m) {
+    const k = `${a}-${pad2(m + 1)}`;
+    if (AG.livres[k]) return;
+    try {
+      const lista = await rpc('horarios_ficha', { p_codigo: fichaGravada.codigo, p_de: new Date(a, m, 1).toISOString(), p_ate: new Date(a, m + 1, 1).toISOString() });
+      AG.livres[k] = (lista || []).map(x => new Date(x).getTime());
+    } catch (e) { AG.livres[k] = []; }
+  }
+  function mostrarStep(id) {
+    document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+    scrollTop();
+  }
+  async function abrirAgenda() {
+    mostrarStep('stepAgendar');
+    document.getElementById('sectionName').textContent = 'Primeira sessão';
+    const hoje = new Date(); AG.ano = hoje.getFullYear(); AG.mes = hoje.getMonth(); AG.dia = ''; AG.hora = ''; AG.livres = {};
+    AG.carregando = true; desenharAgenda();
+    await carregarLivres(AG.ano, AG.mes);
+    if (!livresMes(AG.ano, AG.mes).length) { const d = new Date(AG.ano, AG.mes + 1, 1); await carregarLivres(d.getFullYear(), d.getMonth()); if (livresMes(d.getFullYear(), d.getMonth()).length) { AG.ano = d.getFullYear(); AG.mes = d.getMonth(); } }
+    AG.carregando = false; desenharAgenda();
+  }
+  function desenharAgenda() {
+    const { ano, mes } = AG, hoje = chaveDia(new Date());
+    const ini0 = new Date(ano, mes, 1).getDay(), nDias = new Date(ano, mes + 1, 0).getDate();
+    const nomeMes = new Date(ano, mes, 1).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+    const agora = new Date(), limite = new Date(Date.now() + 60 * 864e5);
+    const podeVoltar = ano > agora.getFullYear() || (ano === agora.getFullYear() && mes > agora.getMonth());
+    const podeIr = new Date(ano, mes + 1, 1) <= limite;
+    let dias = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'].map(x => `<span class="sem">${x}</span>`).join('') + '<span></span>'.repeat(ini0);
+    for (let d = 1; d <= nDias; d++) {
+      const k = `${ano}-${pad2(mes + 1)}-${pad2(d)}`, ok = !AG.carregando && horasDia(k).length > 0;
+      dias += `<button type="button" class="${k === AG.dia ? 'on' : ''}${k === hoje ? ' hoje' : ''}" onclick="agDia('${k}')" ${ok ? '' : 'disabled'} aria-label="${d} de ${nomeMes}${ok ? '' : ', indisponível'}">${d}</button>`;
+    }
+    const tem = livresMes(ano, mes).length > 0;
+    const corpo = AG.carregando ? '<p class="ag-vazio">Vendo os horários livres...</p>'
+      : AG.dia ? `<p class="ag-tit">Horários livres · ${escapeHtml(dataLonga(AG.dia))}</p><div class="ag-horas">${horasDia(AG.dia).map(h => `<button type="button" class="${h === AG.hora ? 'on' : ''}" onclick="agHora('${h}')">${h}</button>`).join('')}</div>`
+      : `<p class="ag-vazio">${tem ? 'Os dias em destaque têm horário livre. Toque em um deles.' : `Sem horários livres ${podeIr ? 'neste mês. Veja o próximo' : 'por enquanto. A Rauana vai combinar com você'}.`}</p>`;
+    document.getElementById('agenda').innerHTML = `<div class="ag-mes"><button type="button" class="ag-seta" onclick="agMes(-1)" ${podeVoltar ? '' : 'disabled'} aria-label="Mês anterior">${SETA_E}</button><b>${nomeMes.charAt(0).toUpperCase() + nomeMes.slice(1)}</b><button type="button" class="ag-seta" onclick="agMes(1)" ${podeIr ? '' : 'disabled'} aria-label="Próximo mês">${SETA_D}</button></div>
+      <div class="ag-grade">${dias}</div>${corpo}${AG.dia && AG.hora ? `<div class="ag-escolha">${escapeHtml(dataLonga(AG.dia))} às <b>${AG.hora}</b></div>` : ''}`;
+    const b = document.getElementById('btnPedir'); b.disabled = !(AG.dia && AG.hora) || AG.enviando; b.querySelector('span').textContent = AG.enviando ? 'Enviando...' : 'Enviar pedido';
+  }
+  function agDia(k) { AG.dia = k; AG.hora = ''; desenharAgenda(); }
+  function agHora(h) { AG.hora = h; desenharAgenda(); }
+  async function agMes(n) { const d = new Date(AG.ano, AG.mes + n, 1); AG.ano = d.getFullYear(); AG.mes = d.getMonth(); AG.dia = ''; AG.hora = ''; AG.carregando = true; desenharAgenda(); await carregarLivres(AG.ano, AG.mes); AG.carregando = false; desenharAgenda(); }
+  const ERROS_AG = {
+    ocupado: 'Esse horário acabou de ser ocupado. Escolha outro, por favor.',
+    indisponivel: 'Esse horário não está mais disponível. Escolha outro, por favor.',
+    muito_cedo: 'Escolha um horário com pelo menos 2 horas de antecedência.',
+    muito_longe: 'Escolha uma data dentro dos próximos 60 dias.',
+    ficha_expirada: 'O tempo para escolher pela ficha acabou. A Rauana vai combinar com você pelo WhatsApp.',
+    limite: 'Você já fez vários pedidos hoje. A Rauana vai combinar com você pelo WhatsApp.',
+  };
+  async function pedirHorario() {
+    if (!(AG.dia && AG.hora) || AG.enviando) return;
+    AG.enviando = true; desenharAgenda();
+    const quando = new Date(AG.dia + 'T' + AG.hora + ':00');
+    try {
+      const r = await rpc('pedir_horario_ficha', { p_codigo: fichaGravada.codigo, p_data_hora: quando.toISOString() });
+      avisarRauana({ acao: 'pedido', id: r.id });
+      finalizar(true);
+    } catch (e) {
+      const k = AG.dia.slice(0, 7);
+      if (e.codigo === 'ocupado' || e.codigo === 'indisponivel') { delete AG.livres[k]; await carregarLivres(AG.ano, AG.mes); AG.hora = ''; if (!horasDia(AG.dia).length) AG.dia = ''; }
+      showToast(ERROS_AG[e.codigo] || 'Não foi possível enviar agora. Tente de novo.');
+      if (e.codigo === 'ficha_expirada' || e.codigo === 'limite') finalizar(false);
+    } finally { AG.enviando = false; if (document.getElementById('stepAgendar').classList.contains('active')) desenharAgenda(); }
+  }
+  function combinarDepois() { finalizar(false); }
+  function finalizar(comPedido) {
+    const nome = primeiroNome();
+    document.getElementById('fimTitulo').textContent = nome ? `Obrigada, ${nome}!` : 'Obrigada!';
+    document.getElementById('fimTexto').textContent = (comPedido
+      ? 'Sua ficha e seu pedido de horário chegaram para a Rauana. Ela vai confirmar o horário pelo WhatsApp.'
+      : 'Sua ficha chegou para a Rauana. Ela vai falar com você pelo WhatsApp para combinar o melhor horário.')
+      + ' Obrigada pela confiança em cuidar de você com a Viva Mais Bella. Será um prazer te receber!';
+    const box = document.getElementById('fimPedido');
+    box.hidden = !comPedido;
+    if (comPedido) box.innerHTML = `<small>SEU PEDIDO</small><b>${escapeHtml(dataLonga(AG.dia))} às ${AG.hora}</b>`;
+    document.getElementById('sectionName').textContent = 'Concluído';
+    document.querySelector('.progress-wrap').classList.add('concluido');
+    mostrarStep('stepFim');
   }
 
   /* ─── PDF ───
@@ -790,43 +921,25 @@
     return doc;
   }
 
-  async function enviarPDF() {
-    const btn = document.getElementById('btnPdf');
-    const label = btn.querySelector('span');
-    btn.disabled = true; label.textContent = 'Gerando PDF...';
-    gravarFichaNoBanco();
+  // Baixa uma cópia da ficha em PDF (opcional; a ficha já vai direto para a Rauana)
+  async function baixarPDF() {
+    const btns = document.querySelectorAll('.btn-pdf');
+    btns.forEach(b => { b.disabled = true; b.querySelector('span').textContent = 'Gerando PDF...'; });
     try {
       await prepararPDF();
       const doc = gerarPDF();
       const nome = (getVal('nome') === '—' ? 'cliente' : getVal('nome')).replace(/[^\p{L}\p{N} ]/gu, '').trim();
       const arquivo = `Anamnese - ${nome} - ${new Date().toLocaleDateString('pt-BR').replace(/\//g, '-')}.pdf`;
-      const blob = doc.output('blob');
-      const file = new File([blob], arquivo, { type: 'application/pdf' });
-
-      if (navigator.canShare && navigator.canShare({ files: [file] })) {
-        try {
-          await navigator.share({ files: [file], title: 'Ficha de Anamnese', text: 'Ficha de anamnese - Viva Mais Bella' });
-          limparRascunho();
-          return;
-        } catch (e) {
-          if (e.name === 'AbortError') return;
-        }
-      }
-      // Sem compartilhamento de arquivos: baixa o PDF e abre a conversa da clínica para anexar
-      const url = URL.createObjectURL(blob);
+      const url = URL.createObjectURL(doc.output('blob'));
       const a = document.createElement('a');
       a.href = url; a.download = arquivo;
       document.body.appendChild(a); a.click(); a.remove();
       setTimeout(() => URL.revokeObjectURL(url), 10000);
-      limparRascunho();
-      showToast('PDF baixado. Anexe o arquivo na conversa do WhatsApp.');
-      const msg = encodeURIComponent(`Olá! Segue minha ficha de anamnese em PDF. ${getVal('nome')}`);
-      // ← Troque pelo número do WhatsApp do spa (somente dígitos, com DDI)
-      setTimeout(() => window.open(`https://wa.me/5571991158054?text=${msg}`, '_blank'), 1200);
+      showToast('PDF baixado.');
     } catch (e) {
       showToast('Não foi possível gerar o PDF. Tente novamente.');
     } finally {
-      btn.disabled = false; label.textContent = 'Gerar PDF e enviar';
+      btns.forEach(b => { b.disabled = false; b.querySelector('span').textContent = 'Baixar PDF da ficha'; });
     }
   }
 
