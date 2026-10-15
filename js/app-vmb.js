@@ -4,10 +4,12 @@ const SB_URL = 'https://swavuilayxhrfaswlqtg.supabase.co';
 // Chave pública (anon): sozinha não lê nada, as regras do banco exigem login de alguém da equipe
 const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN3YXZ1aWxheXhocmZhc3dscXRnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE0OTcyOTIsImV4cCI6MjEwNzA3MzI5Mn0.Jai6jPHC86vH52dAfr0iz0fVPPJT6kMvV-u9WFXEozA';
 const TERAPEUTA = 'Rauana Ferreira';
+// Chave pública dos avisos no celular (Web Push). A chave secreta fica só no servidor.
+const VAPID_PUBLICA = 'BI4O76RINypnTN4N80eZfgpOMHpmG0aQG3K4V7icBLHPz9w7vlQ_eCvDoBkr1wP4n2aTB-RSVgXNw2g-AUk7nkg';
 const PROC_PADRAO = ['Drenagem linfática', 'Massagem modeladora', 'Limpeza de pele', 'Massagem relaxante', 'Liberação miofascial', 'Depilação'];
 
 const sb = supabase.createClient(SB_URL, SB_KEY, { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } });
-const st = { user: null, membro: null, pacientes: [], planos: [], fichas: [], procs: [], fotos: {}, ui: { busca: '', buscaProc: '', filtro: 'todas' }, recuperando: false };
+const st = { user: null, membro: null, pacientes: [], planos: [], fichas: [], procs: [], pedidos: [], fotos: {}, avisos: '', ui: { busca: '', buscaProc: '', filtro: 'todas' }, recuperando: false };
 const nomesProc = () => st.procs.length ? st.procs.map(p => p.nome) : PROC_PADRAO;
 
 /* ═══ UTILIDADES ═══ */
@@ -41,6 +43,7 @@ const ic = {
   tag: '<path d="M3.5 12.2V4.5a1 1 0 0 1 1-1h7.7l8.3 8.3a1.5 1.5 0 0 1 0 2.1l-6.6 6.6a1.5 1.5 0 0 1-2.1 0z"/><circle cx="8" cy="8" r="1.5"/>',
   user: '<circle cx="12" cy="12" r="8.6"/><circle cx="12" cy="10" r="3"/><path d="M6.6 18.5c1.2-2.2 3.1-3.4 5.4-3.4s4.2 1.2 5.4 3.4"/>',
   lotus: '<path d="M12 20.2c-2.7-1.6-4.3-4.4-4.3-7.5 0-2.9 1.5-5.7 4.3-8.2 2.8 2.5 4.3 5.3 4.3 8.2 0 3.1-1.6 5.9-4.3 7.5z"/><path d="M12 20.2c-4.6.4-8.4-2.1-9.5-6.9 1.9-.8 3.9-.9 5.7-.4"/><path d="M12 20.2c4.6.4 8.4-2.1 9.5-6.9-1.9-.8-3.9-.9-5.7-.4"/>',
+  bell: '<path d="M6 16.5V11a6 6 0 0 1 12 0v5.5l1.5 2h-15z"/><path d="M10 20.5a2 2 0 0 0 4 0"/>',
   clock: '<circle cx="12" cy="12" r="8.6"/><path d="M12 7.5V12l3 2"/>',
   cam: '<path d="M4 8h3l2-2.5h6L17 8h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/><circle cx="12" cy="13" r="3.5"/>',
   img: '<rect x="3.5" y="4.5" width="17" height="15" rx="2"/><circle cx="9" cy="10" r="1.8"/><path d="M20.5 16l-5-5-8.5 8.5"/>',
@@ -106,6 +109,82 @@ function aplicarPicker(dia) {
   fecharPicker();
 }
 
+const dataLonga = iso => { const t = new Date(iso).toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' }).replace('-feira', ''); return t.charAt(0).toUpperCase() + t.slice(1); };
+/* ═══ PEDIDOS DE HORÁRIO (feitos pela cliente na página dela) ═══ */
+function cartaoPedido(ped) {
+  const pl = st.planos.find(x => x.id === ped.plano_id); if (!pl) return '';
+  const p = paciente(pl.paciente_id), s = info(pl).proxima, t = new Date(ped.data_hora).getTime();
+  const choque = st.planos.filter(x => x.status === 'ativo' && x.id !== pl.id).flatMap(x => x.sessoes.filter(z => z.status === 'agendada' && z.data_hora && Math.abs(new Date(z.data_hora).getTime() - t) < 3600e3).map(z => ({ x, z })))[0];
+  return `<div class="card stack pedido-card">
+    <div class="row">${av(p.nome, p.foto)}<div style="flex:1;min-width:0"><b style="font-weight:500">${esc(p.nome)}</b><div class="ink2" style="font-size:13px">${esc(pl.procedimento)}${s ? ` · ${s.numero}ª sessão` : ''}</div></div><span class="badge b-warn">PEDIDO</span></div>
+    <div class="pedido-quando">${I('cal')}<div><b>${dataLonga(ped.data_hora)}</b><span>às ${fHora(ped.data_hora)}</span></div></div>
+    ${choque ? `<div class="alerta" style="padding:8px 12px;font-size:13px">Já tem sessão de ${esc(primeiro(paciente(choque.x.paciente_id).nome))} às ${fHora(choque.z.data_hora)} nesse dia.</div>` : ''}
+    <div class="row" style="gap:8px"><button class="btn sm" style="flex:1" data-acao="pedido-confirmar" data-id="${ped.id}">${I('check', 2)} Confirmar</button><button class="btn sm ghost" style="flex:1" data-acao="pedido-mudar" data-id="${ped.id}">Mudar data</button></div></div>`;
+}
+function avisoCliente(pl, numero, dataHora, original) {
+  const p = paciente(pl.paciente_id), quando = `${dataLonga(dataHora).toLowerCase()} às ${fHora(dataHora)}`;
+  const msg = original
+    ? `Olá, ${primeiro(p.nome)}! O horário que você pediu (${dataLonga(original).toLowerCase()} às ${fHora(original)}) não estava disponível, então marquei a sua ${numero}ª sessão de ${pl.procedimento.toLowerCase()} para ${quando}. Se não puder, me avise por aqui. ${TERAPEUTA}, Viva Mais Bella.\n\nAcompanhe seu tratamento: ${linkPaciente(pl)}`
+    : `Olá, ${primeiro(p.nome)}! Sua ${numero}ª sessão de ${pl.procedimento.toLowerCase()} está confirmada para ${quando}. Te espero! ${TERAPEUTA}, Viva Mais Bella.\n\nAcompanhe seu tratamento: ${linkPaciente(pl)}`;
+  render();
+  abrirSheet(`<div style="display:flex;flex-direction:column;align-items:center;gap:10px;text-align:center;padding:10px 0">
+      <span class="dot d-ok" style="width:56px;height:56px;border-radius:28px">${I('check', 2.4)}</span>
+      <h2 class="s" style="font-size:27px">${original ? 'Data alterada' : 'Horário confirmado'}</h2>
+      <p class="ink2" style="font-size:14px">${esc(primeiro(p.nome))} · ${numero}ª sessão · ${esc(dataLonga(dataHora))} às ${fHora(dataHora)}</p></div>
+    <a class="btn" href="${waLink(p.telefone, msg)}" target="_blank" rel="noopener" data-acao="fechar">${I('wa')} Avisar ${esc(primeiro(p.nome))} no WhatsApp</a>
+    <button class="btn ghost" data-acao="fechar">Fechar</button>`);
+}
+/* ═══ AVISOS NO CELULAR (Web Push) ═══ */
+const pushSuportado = () => 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
+const bytesB64u = s => { s = s.replace(/-/g, '+').replace(/_/g, '/'); while (s.length % 4) s += '='; return Uint8Array.from(atob(s), c => c.charCodeAt(0)); };
+async function estadoAvisos() {
+  try {
+    if (!pushSuportado()) return 'sem-suporte';
+    if (Notification.permission === 'denied') return 'bloqueado';
+    const reg = await navigator.serviceWorker.getRegistration();
+    const sub = reg && await reg.pushManager.getSubscription();
+    return sub && Notification.permission === 'granted' ? 'ativo' : 'inativo';
+  } catch (e) { return 'sem-suporte'; }
+}
+async function gravarInscricao(sub) {
+  const j = sub.toJSON();
+  const { error } = await sb.rpc('registrar_push', { p_endpoint: j.endpoint, p_p256dh: j.keys.p256dh, p_auth: j.keys.auth });
+  if (error) throw error;
+}
+async function ativarAvisos() {
+  if (!pushSuportado()) return toast('Este celular não aceita avisos neste navegador.');
+  const perm = await Notification.requestPermission();
+  if (perm !== 'granted') { st.avisos = await estadoAvisos(); render(); return toast('Sem permissão. Libere as notificações nas configurações do celular.'); }
+  try {
+    const reg = await navigator.serviceWorker.ready;
+    let sub = await reg.pushManager.getSubscription();
+    if (!sub) sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: bytesB64u(VAPID_PUBLICA) });
+    await gravarInscricao(sub);
+    st.avisos = 'ativo'; render(); toast('Avisos ativados neste celular.');
+    sb.functions.invoke('avisos', { body: { acao: 'teste' } }).catch(() => {});
+  } catch (e) { console.error(e); toast('Não foi possível ativar os avisos. Tente de novo.'); }
+}
+async function desativarAvisos() {
+  try {
+    const reg = await navigator.serviceWorker.getRegistration();
+    const sub = reg && await reg.pushManager.getSubscription();
+    if (sub) { await sb.rpc('remover_push', { p_endpoint: sub.endpoint }); await sub.unsubscribe(); }
+  } catch (e) { console.error(e); }
+  st.avisos = await estadoAvisos(); render(); toast('Avisos desativados neste celular.');
+}
+function blocoAvisos() {
+  const a = st.avisos;
+  const txt = {
+    ativo: 'Ativos neste celular. Quando uma cliente pedir horário, chega um aviso aqui, mesmo com o app fechado.',
+    inativo: 'Receba um aviso no celular, igual ao do WhatsApp, quando uma cliente pedir horário pela página dela.',
+    bloqueado: 'As notificações estão bloqueadas para este app. Libere em Configurações do celular, Notificações, e volte aqui.',
+    'sem-suporte': 'Este celular ainda não aceita avisos por aqui. No iPhone, instale o app na Tela de Início (veja abaixo) e abra por ele.',
+  }[a] || '';
+  return `<section class="card stack"><div class="tag">Avisos de pedidos</div><p class="ink2" style="font-size:14px;line-height:1.55">${txt}</p>
+    ${a === 'inativo' ? `<button class="btn sm" style="width:100%" data-acao="avisos-ativar">${I('bell')} Ativar avisos neste celular</button>` : ''}
+    ${a === 'ativo' ? `<div class="row" style="gap:8px"><button class="btn sm ghost" style="flex:1" data-acao="avisos-testar">Enviar aviso de teste</button><button class="btn sm ghost" style="flex:1" data-acao="avisos-desativar">Desativar</button></div>` : ''}</section>`;
+}
+
 function toast(msg) {
   const t = $('#toast'); t.innerHTML = `<div class="toast">${esc(msg)}</div>`;
   clearTimeout(toast.t); toast.t = setTimeout(() => { t.innerHTML = ''; }, 3000);
@@ -115,16 +194,19 @@ function fecharSheet() { $('#sheet').innerHTML = ''; }
 
 /* ═══ DADOS ═══ */
 async function carregar() {
-  const [p, pl, f, pr] = await Promise.all([
+  const [p, pl, f, pr, pd] = await Promise.all([
     sb.from('pacientes').select('id,nome,telefone,idade,endereco,foto,criado_em').order('nome'),
     sb.from('planos').select('id,paciente_id,procedimento,total_sessoes,valor,status,codigo_publico,criado_em,sessoes(id,numero,data_hora,status,observacao,concluida_em)').order('criado_em', { ascending: false }),
     sb.from('anamneses').select('id,paciente_id,servicos,pontos_atencao,enviada_em').order('enviada_em', { ascending: false }),
     sb.from('procedimentos').select('id,nome,valor').order('nome'),
+    sb.from('pedidos_horario').select('id,plano_id,data_hora,criado_em').eq('status', 'pendente').order('data_hora'),
   ]);
   for (const r of [p, pl, f]) if (r.error) throw r.error;
   st.pacientes = p.data; st.planos = pl.data; st.fichas = f.data;
   st.planos.forEach(x => x.sessoes.sort((a, b) => a.numero - b.numero));
   st.procs = pr.error ? [] : pr.data;
+  st.pedidos = pd.error ? [] : pd.data.filter(x => st.planos.some(pl => pl.id === x.plano_id && pl.status === 'ativo'));
+  st.carregadoEm = Date.now();
   await carregarFotos();
 }
 // Fotos ficam numa pasta privada: o app pede links temporários só para a equipe logada
@@ -193,8 +275,8 @@ function render() {
 }
 function nav(r) {
   const on = { inicio: 'inicio', pacientes: 'pacientes', paciente: 'pacientes', plano: 'pacientes', agenda: 'agenda', procedimentos: 'procedimentos', usuario: 'usuario', ajustes: 'usuario' }[r] || 'inicio';
-  const a = (k, h, n, t) => `<a href="#/${h}" class="${on === k ? 'on' : ''}"${on === k ? ' aria-current="page"' : ''}><span class="ic">${I(n)}</span>${t}</a>`;
-  return `<nav class="tab" aria-label="Navegação principal">${a('inicio', 'inicio', 'home', 'Início')}${a('pacientes', 'pacientes', 'users', 'Pacientes')}${a('procedimentos', 'procedimentos', 'lotus', 'Procedimentos')}${a('agenda', 'agenda', 'cal', 'Agenda')}${a('usuario', 'usuario', 'user', 'Usuário')}</nav>`;
+  const a = (k, h, n, t, c) => `<a href="#/${h}" class="${on === k ? 'on' : ''}"${on === k ? ' aria-current="page"' : ''}><span class="ic">${I(n)}${c ? `<i class="nbadge" aria-label="${c} pedidos">${c}</i>` : ''}</span>${t}</a>`;
+  return `<nav class="tab" aria-label="Navegação principal">${a('inicio', 'inicio', 'home', 'Início', st.pedidos.length)}${a('pacientes', 'pacientes', 'users', 'Pacientes')}${a('procedimentos', 'procedimentos', 'lotus', 'Procedimentos')}${a('agenda', 'agenda', 'cal', 'Agenda')}${a('usuario', 'usuario', 'user', 'Usuário')}</nav>`;
 }
 
 /* ═══ TELAS ═══ */
@@ -252,6 +334,8 @@ function vInicio() {
       <div class="stat"><b>${semana}</b><span>em 7 dias</span></div>
       <div class="stat soft"><b>${renovar.length}</b><span>para renovar</span></div>
     </div>
+    ${st.pedidos.length ? `<section class="stack"><div class="between"><h2 class="s">Pedidos de horário</h2><span class="badge b-warn">${st.pedidos.length} ${st.pedidos.length === 1 ? 'NOVO' : 'NOVOS'}</span></div>${st.pedidos.map(cartaoPedido).join('')}</section>` : ''}
+    ${st.avisos === 'inativo' && !st.ui.semConvite ? `<div class="card row" style="background:var(--soft);align-items:flex-start">${I('bell')}<div style="flex:1;display:flex;flex-direction:column;gap:8px"><span style="font-size:14px;line-height:1.5">Ative os avisos para saber na hora quando uma cliente pedir horário.</span><div class="row" style="gap:8px"><button class="btn sm" data-acao="avisos-ativar">Ativar avisos</button><button class="btn sm ghost" style="border:0" data-acao="avisos-depois">Agora não</button></div></div></div>` : ''}
     <section class="stack">
       <div class="between"><h2 class="s">Sessões de hoje</h2><a href="#/agenda" style="font-size:13px;text-decoration:none;padding:8px 0">Ver agenda</a></div>
       ${deHoje.length ? deHoje.map(x => itemSessao(x.pl, x.s)).join('') : '<div class="empty">Nenhuma sessão marcada para hoje.</div>'}
@@ -341,6 +425,7 @@ function vPlano(id) {
       <button class="icon-btn plain" data-acao="menu-plano" data-id="${pl.id}" aria-label="Opções do plano"><svg class="i" viewBox="0 0 24 24" style="fill:currentColor;stroke:none"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg></button></header>
     <a class="row" href="#/paciente/${p.id}" style="text-decoration:none;color:inherit">${av(p.nome, p.foto, 'g')}<div><h1 class="t" style="font-size:27px">${esc(p.nome)}</h1>
       ${fichaDe(p.id) ? `<span style="font-size:13px;color:var(--oktext)">Ficha de anamnese recebida</span>` : '<span class="muted" style="font-size:13px">Sem ficha de anamnese</span>'}</div></a>
+    ${st.pedidos.filter(x => x.plano_id === pl.id).map(cartaoPedido).join('')}
     <div class="plano-card"><div style="flex:1;display:flex;flex-direction:column;gap:6px"><span style="font-size:11px;letter-spacing:.22em;color:#D9C3AC">${pl.status === 'ativo' ? 'PLANO' : pl.status === 'finalizado' ? 'PLANO FINALIZADO' : 'PLANO CANCELADO'}</span>
       <span class="serif" style="font-size:26px;font-weight:600;line-height:1.05">${esc(pl.procedimento)}</span><span style="font-size:13px;color:var(--soft)">${pl.total_sessoes} sessões · ${TERAPEUTA}${pl.valor ? ' · R$ ' + Number(pl.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 }) : ''}</span></div>
       <div style="position:relative;width:78px;height:78px;flex-shrink:0"><svg width="78" height="78" viewBox="0 0 78 78"><circle cx="39" cy="39" r="33" fill="none" stroke="#5A4231" stroke-width="7"/><circle cx="39" cy="39" r="33" fill="none" stroke="#D9BFA5" stroke-width="7" stroke-linecap="round" stroke-dasharray="${(C * fr).toFixed(1)} 300" transform="rotate(-90 39 39)"/></svg>
@@ -393,6 +478,7 @@ function vAgenda() {
 function vUsuario() {
   return `<div class="wrap"><h1 class="t">Usuário</h1>
     <section class="card row"><button class="av-btn" data-acao="foto" data-tipo="equipe" aria-label="Trocar sua foto">${av(st.membro.nome, st.membro.foto, 'g')}<span class="cam">${I('cam')}</span></button><div><b style="font-weight:500;font-size:17px">${esc(st.membro.nome)}</b><div class="ink2" style="font-size:13px">${esc(st.user.email)} · ${st.membro.papel === 'admin' ? 'Administrador(a)' : 'Terapeuta'}</div></div></section>
+    ${blocoAvisos()}
     <section class="card stack"><div class="tag">Seu nome</div>
       <form data-form="meu-nome" class="stack"><input class="inp" name="nome" value="${esc(st.membro.nome)}" maxlength="60" autocomplete="name" aria-label="Seu nome" required><button class="btn sm" type="submit" style="width:100%">Salvar nome</button></form></section>
     <section class="card stack"><div class="tag">Trocar senha</div>
@@ -666,7 +752,9 @@ async function entrar(user) {
   if (error || !data) { st.membro = null; st.erroLogin = 'Este e-mail não tem acesso ao app.'; await sb.auth.signOut(); st.user = null; render(); return; }
   st.membro = data; st.erroLogin = '';
   try { await carregar(); } catch (e) { console.error(e); toast('Erro ao carregar os dados. Verifique a internet.'); }
+  st.avisos = await estadoAvisos();
   render();
+  if (st.avisos === 'ativo') navigator.serviceWorker.getRegistration().then(r => r && r.pushManager.getSubscription()).then(sub => sub && gravarInscricao(sub)).catch(() => {});
 }
 
 document.addEventListener('click', async e => {
@@ -693,6 +781,27 @@ document.addEventListener('click', async e => {
     const y = window.scrollY; render(); window.scrollTo(0, y); return;
   }
   if (a === 'menu-plano') return sheetMenuPlano(id);
+  if (a === 'avisos-ativar') return ativarAvisos();
+  if (a === 'avisos-desativar') return desativarAvisos();
+  if (a === 'avisos-depois') { st.ui.semConvite = true; return render(); }
+  if (a === 'avisos-testar') { const { data, error } = await sb.functions.invoke('avisos', { body: { acao: 'teste' } }); return toast(error ? 'Não foi possível enviar o teste.' : data && data.enviados ? 'Aviso de teste enviado. Deve chegar em instantes.' : 'Nenhum celular ativo encontrado. Ative de novo.'); }
+  if (a === 'pedido-confirmar') {
+    const ped = st.pedidos.find(x => x.id === id), pl = ped && st.planos.find(x => x.id === ped.plano_id), s = pl && info(pl).proxima;
+    if (!s) return toast('Este plano não tem sessão para agendar.');
+    if (await salvar(async () => {
+      await upd('sessoes', { data_hora: ped.data_hora, status: 'agendada' }, s.id);
+      await upd('pedidos_horario', { status: 'confirmado', respondido_em: new Date().toISOString() }, ped.id);
+    })) avisoCliente(st.planos.find(x => x.id === pl.id), s.numero, ped.data_hora, null);
+    return;
+  }
+  if (a === 'pedido-mudar') {
+    const ped = st.pedidos.find(x => x.id === id), pl = ped && st.planos.find(x => x.id === ped.plano_id); if (!pl) return;
+    const p = paciente(pl.paciente_id);
+    return abrirSheet(`<div class="between" style="align-items:flex-start"><h2 class="s" style="font-size:27px">Mudar data</h2><button class="icon-btn plain" data-acao="fechar" aria-label="Fechar">${I('x')}</button></div>
+      <p class="ink2" style="font-size:14px;line-height:1.5">${esc(primeiro(p.nome))} pediu <b>${esc(dataLonga(ped.data_hora))} às ${fHora(ped.data_hora)}</b>. Escolha a data que funciona para você:</p>
+      <form data-form="pedido-mudar" data-id="${ped.id}" class="stack" style="gap:14px"><div class="f">Nova data e horário${campoDH(diaKey(new Date(ped.data_hora)), fHora(ped.data_hora), false)}</div>
+      <button class="btn" type="submit">${I('wa')} Salvar e avisar a cliente</button></form>`);
+  }
   if (a === 'foto') return sheetFoto(el.dataset.tipo, id);
   if (a === 'novo-proc') return sheetProc(null, el.dataset.nome);
   if (a === 'editar-proc') return sheetProc(id);
@@ -787,6 +896,11 @@ document.addEventListener('click', async e => {
   }
 });
 
+document.addEventListener('visibilitychange', async () => {
+  if (document.visibilityState !== 'visible' || !st.membro || Date.now() - (st.carregadoEm || 0) < 20000) return;
+  try { await carregar(); } catch (e) { return; }
+  if (!$('#sheet').innerHTML && !$('#picker').innerHTML && ['inicio', 'plano', 'agenda', 'pacientes', ''].includes(rota()[0] || '')) render();
+});
 document.addEventListener('input', e => {
   const el = e.target;
   if (el.id === 'busca') { st.ui.busca = el.value; listarPacientes(); }
@@ -891,6 +1005,17 @@ async function enviarForm(tipo, form) {
       if (error) throw error;
     }, 'Ficha salva.');
     if (ok) { st.anam = null; ir('#/paciente/' + p.id); }
+    return;
+  }
+  if (tipo === 'pedido-mudar') {
+    const ped = st.pedidos.find(x => x.id === form.dataset.id), pl = ped && st.planos.find(x => x.id === ped.plano_id), s = pl && info(pl).proxima;
+    if (!s) return toast('Este plano não tem sessão para agendar.');
+    if (!v('dia')) return toast('Escolha a nova data.');
+    const nova = paraISO(v('dia'), v('hora'));
+    if (await salvar(async () => {
+      await upd('sessoes', { data_hora: nova, status: 'agendada' }, s.id);
+      await upd('pedidos_horario', { status: 'alterado', respondido_em: new Date().toISOString() }, ped.id);
+    })) avisoCliente(st.planos.find(x => x.id === pl.id), s.numero, nova, ped.data_hora);
     return;
   }
   if (tipo === 'meu-nome') {
