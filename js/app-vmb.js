@@ -44,6 +44,9 @@ const ic = {
   user: '<circle cx="12" cy="12" r="8.6"/><circle cx="12" cy="10" r="3"/><path d="M6.6 18.5c1.2-2.2 3.1-3.4 5.4-3.4s4.2 1.2 5.4 3.4"/>',
   lotus: '<path d="M12 20.2c-2.7-1.6-4.3-4.4-4.3-7.5 0-2.9 1.5-5.7 4.3-8.2 2.8 2.5 4.3 5.3 4.3 8.2 0 3.1-1.6 5.9-4.3 7.5z"/><path d="M12 20.2c-4.6.4-8.4-2.1-9.5-6.9 1.9-.8 3.9-.9 5.7-.4"/><path d="M12 20.2c4.6.4 8.4-2.1 9.5-6.9-1.9-.8-3.9-.9-5.7-.4"/>',
   bell: '<path d="M6 16.5V11a6 6 0 0 1 12 0v5.5l1.5 2h-15z"/><path d="M10 20.5a2 2 0 0 0 4 0"/>',
+  alert: '<path d="M12 4.5 21 19.5H3z"/><path d="M12 10v4.2M12 16.9h.01"/>',
+  undo: '<path d="M9 7 4.5 11.5 9 16"/><path d="M5 11.5h9.5a5 5 0 0 1 0 10H11"/>',
+  copy: '<rect x="8.5" y="8.5" width="12" height="12" rx="2.5"/><path d="M15.5 8.5V6a2.5 2.5 0 0 0-2.5-2.5H6A2.5 2.5 0 0 0 3.5 6v7A2.5 2.5 0 0 0 6 15.5h2.5"/>',
   clock: '<circle cx="12" cy="12" r="8.6"/><path d="M12 7.5V12l3 2"/>',
   cam: '<path d="M4 8h3l2-2.5h6L17 8h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/><circle cx="12" cy="13" r="3.5"/>',
   img: '<rect x="3.5" y="4.5" width="17" height="15" rx="2"/><circle cx="9" cy="10" r="1.8"/><path d="M20.5 16l-5-5-8.5 8.5"/>',
@@ -186,6 +189,33 @@ function blocoAvisos() {
     ${a === 'inativo' ? `<button class="btn sm" style="width:100%" data-acao="avisos-ativar">${I('bell')} Ativar avisos neste celular</button>` : ''}
     ${a === 'ativo' ? `<div class="row" style="gap:8px"><button class="btn sm ghost" style="flex:1" data-acao="avisos-testar">Enviar aviso de teste</button><button class="btn sm ghost" style="flex:1" data-acao="avisos-desativar">Desativar</button></div>` : ''}</section>`;
 }
+
+/* ═══ JANELA DE CONFIRMAÇÃO (no lugar das caixas do sistema) ═══ */
+function confirmar({ titulo, texto, ok = 'Confirmar', cancelar = 'Voltar', perigo = false, icone, trava } = {}) {
+  return new Promise(resolve => {
+    const ant = $('#dialogo'); if (ant) ant.remove();
+    const el = document.createElement('div'); el.id = 'dialogo';
+    const ic = icone || (perigo ? 'trash' : 'check');
+    el.innerHTML = `<div class="dlg-bg"><div class="dlg" role="alertdialog" aria-modal="true" aria-labelledby="dlg-t" aria-describedby="dlg-x">
+      <span class="dlg-ic ${perigo ? 'perigo' : ''}">${I(ic, 1.9)}</span>
+      <h2 class="s" id="dlg-t">${esc(titulo || 'Confirmar')}</h2>
+      ${texto ? `<p class="ink2" id="dlg-x">${texto}</p>` : ''}
+      ${trava ? `<label class="dlg-trava"><input type="checkbox" id="dlg-trava"><span>${esc(trava)}</span></label>` : ''}
+      <div class="dlg-bts"><button type="button" class="btn ghost" data-r="0">${esc(cancelar)}</button><button type="button" class="btn ${perigo ? 'perigo' : ''}" data-r="1" ${trava ? 'disabled' : ''}>${esc(ok)}</button></div></div></div>`;
+    document.body.appendChild(el);
+    const fim = v => { document.removeEventListener('keydown', tecla); el.classList.add('sai'); setTimeout(() => el.remove(), 180); resolve(v); };
+    const tecla = e => { if (e.key === 'Escape') fim(false); };
+    document.addEventListener('keydown', tecla);
+    el.addEventListener('click', e => {
+      e.stopPropagation();
+      if (e.target.classList.contains('dlg-bg')) return fim(false);
+      const b = e.target.closest('[data-r]'); if (b && !b.disabled) fim(b.dataset.r === '1');
+    });
+    const tv = el.querySelector('#dlg-trava'); if (tv) tv.addEventListener('change', () => { el.querySelector('[data-r="1"]').disabled = !tv.checked; });
+    setTimeout(() => { const b = el.querySelector(perigo ? '[data-r="0"]' : '[data-r="1"]'); if (b) b.focus(); }, 50);
+  });
+}
+const negrito = t => `<b style="color:var(--ink);font-weight:600">${esc(t)}</b>`;
 
 function toast(msg) {
   const t = $('#toast'); t.innerHTML = `<div class="toast">${esc(msg)}</div>`;
@@ -886,13 +916,13 @@ document.addEventListener('click', async e => {
   if (a === 'editar-proc') return sheetProc(id);
   if (a === 'excluir-proc') {
     const p = st.procs.find(x => x.id === id);
-    if (!confirm(`Excluir ${p.nome} da lista? Os planos já criados com ele não mudam.`)) return;
+    if (!await confirmar({ titulo: 'Excluir procedimento?', texto: `${negrito(p.nome)} sai da lista. Os planos já criados com ele continuam iguais.`, ok: 'Excluir', perigo: true })) return;
     if (await salvar(async () => { const r = await sb.from('procedimentos').delete().eq('id', id); if (r.error) throw r.error; }, 'Procedimento excluído.')) { fecharSheet(); render(); }
     return;
   }
   if (a === 'remover-foto') {
     const eu = el.dataset.tipo === 'equipe', antiga = (eu ? st.membro : paciente(id)).foto;
-    if (!confirm('Remover a foto?')) return;
+    if (!await confirmar({ titulo: 'Remover a foto?', texto: 'Volta a aparecer só as iniciais. Você pode colocar outra foto quando quiser.', ok: 'Remover', perigo: true })) return;
     if (await salvar(async () => {
       const r = await gravarFoto(eu, id, null); if (r.error) throw r.error;
       if (eu) st.membro.foto = null;
@@ -904,7 +934,7 @@ document.addEventListener('click', async e => {
   if (a === 'editar-paciente') return sheetEditarPaciente(id);
   if (a === 'excluir-sessao') {
     const pl = st.planos.find(p => p.sessoes.some(s => s.id === id));
-    if (!confirm('Excluir esta sessão? O pacote passa a ter uma sessão a menos.')) return;
+    if (!await confirmar({ titulo: 'Excluir esta sessão?', texto: `O pacote passa a ter ${negrito(String(pl.sessoes.length - 1) + ' sessões')}. As sessões já feitas continuam no histórico.`, ok: 'Excluir sessão', perigo: true })) return;
     if (await salvar(async () => {
       const r = await sb.from('sessoes').delete().eq('id', id).neq('status', 'concluida'); if (r.error) throw r.error;
       const a2 = await sb.rpc('ajustar_plano', { p_plano: pl.id }); if (a2.error) throw a2.error;
@@ -912,7 +942,7 @@ document.addEventListener('click', async e => {
     return;
   }
   if (a === 'desfazer-sessao') {
-    if (!confirm('Marcar esta sessão como não realizada?')) return;
+    if (!await confirmar({ titulo: 'Marcar como não realizada?', texto: 'A sessão volta a ficar agendada e deixa de contar como feita.', ok: 'Marcar como não realizada', icone: 'undo' })) return;
     const pl = st.planos.find(p => p.sessoes.some(s => s.id === id));
     if (await salvar(async () => {
       await upd('sessoes', { status: 'agendada', concluida_em: null }, id);
@@ -922,14 +952,13 @@ document.addEventListener('click', async e => {
   }
   if (a === 'excluir-plano') {
     const pl = st.planos.find(p => p.id === id);
-    if (!confirm(`Excluir o plano de ${pl.procedimento}? Todas as sessões dele serão apagadas e não dá para desfazer.`)) return;
+    if (!await confirmar({ titulo: 'Excluir este plano?', texto: `O plano de ${negrito(pl.procedimento)} e todas as sessões dele serão apagados. Se o pacote só não vai continuar, prefira ${negrito('Cancelar plano')}: ele fica no histórico.`, ok: 'Excluir plano', perigo: true, trava: 'Entendo que não dá para desfazer' })) return;
     if (await salvar(async () => { const r = await sb.from('planos').delete().eq('id', id); if (r.error) throw r.error; }, 'Plano excluído.')) { fecharSheet(); ir('#/paciente/' + pl.paciente_id); }
     return;
   }
   if (a === 'excluir-paciente') {
     const p = paciente(id);
-    if (!confirm(`Excluir ${p.nome}? As fichas de anamnese e os planos dela também serão apagados.`)) return;
-    if (!confirm('Tem certeza? Não dá para desfazer.')) return;
+    if (!await confirmar({ titulo: 'Excluir paciente?', texto: `${negrito(p.nome)} será apagada junto com as fichas de anamnese, os planos, as sessões e a foto.`, ok: 'Excluir paciente', perigo: true, trava: 'Entendo que não dá para desfazer' })) return;
     if (await salvar(async () => { const r = await sb.from('pacientes').delete().eq('id', id); if (r.error) throw r.error; if (p.foto) await sb.storage.from('fotos').remove([p.foto]); }, 'Paciente excluída.')) { fecharSheet(); ir('#/pacientes'); }
     return;
   }
@@ -947,7 +976,8 @@ document.addEventListener('click', async e => {
   }
   if (a === 'copiar-link') {
     const pl = st.planos.find(p => p.id === id);
-    try { await navigator.clipboard.writeText(linkPaciente(pl)); toast('Link da paciente copiado.'); } catch { prompt('Copie o link da paciente:', linkPaciente(pl)); }
+    try { await navigator.clipboard.writeText(linkPaciente(pl)); toast('Link da paciente copiado.'); }
+    catch { confirmar({ titulo: 'Link da paciente', texto: `Segure o link abaixo para copiar:<input class="inp" readonly value="${esc(linkPaciente(pl))}" onfocus="this.select()" style="margin-top:10px;font-size:14px">`, ok: 'Pronto', cancelar: 'Fechar', icone: 'copy' }); }
     return;
   }
   if (a === 'ver-ficha') {
@@ -960,8 +990,12 @@ document.addEventListener('click', async e => {
   }
   if (a === 'limpar-data') { if (await salvar(() => upd('sessoes', { data_hora: null, status: 'pendente' }, id), 'Data removida.')) { fecharSheet(); render(); } return; }
   if (a === 'status-plano') {
-    const txt = el.dataset.v === 'cancelado' ? 'Cancelar este plano? As sessões que faltam deixam de aparecer na agenda.' : el.dataset.v === 'ativo' ? 'Reabrir este plano?' : 'Marcar este plano como finalizado?';
-    if (!confirm(txt)) return;
+    const cfg = {
+      cancelado: { titulo: 'Cancelar este plano?', texto: 'As sessões que faltam deixam de aparecer na agenda. O plano continua no histórico da paciente e pode ser reaberto.', ok: 'Cancelar plano', cancelar: 'Voltar', perigo: true, icone: 'alert' },
+      ativo: { titulo: 'Reabrir este plano?', texto: 'O plano volta a ficar ativo e as sessões que faltam voltam para a agenda.', ok: 'Reabrir plano', icone: 'undo' },
+      finalizado: { titulo: 'Finalizar este plano?', texto: 'O plano fica marcado como concluído. Bom momento para oferecer a renovação.', ok: 'Finalizar plano', icone: 'check' },
+    }[el.dataset.v];
+    if (!await confirmar(cfg)) return;
     if (await salvar(() => upd('planos', { status: el.dataset.v }, id), 'Plano atualizado.')) { fecharSheet(); render(); }
     return;
   }
