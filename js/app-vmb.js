@@ -29,9 +29,9 @@ const waLink = (tel, msg) => 'https://wa.me/' + tel55(tel) + (msg ? '?text=' + e
 const somaDias = (d, n) => { const x = new Date(d); x.setDate(x.getDate() + n); return x; };
 const lerValor = t => { const s = String(t || '').replace(/[^\d,.]/g, '').replace(/\.(?=\d{3}(\D|$))/g, '').replace(',', '.'); const n = s ? Number(s) : NaN; return Number.isFinite(n) ? n : null; };
 const ic = {
-  home: '<path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z"/>',
-  users: '<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.6 3.4-5.5 6.5-5.5s5.7 1.9 6.5 5.5"/><path d="M16 4.8a3.3 3.3 0 0 1 0 6.4M18 14.8c1.8.7 3 2.4 3.5 5.2"/>',
-  cal: '<rect x="3.5" y="5" width="17" height="15.5" rx="2"/><path d="M3.5 10h17M8 3v4M16 3v4"/>',
+  home: '<path d="M4 10.4 12 4l8 6.4V19a1.5 1.5 0 0 1-1.5 1.5H15.2v-5.3a1 1 0 0 0-1-1h-4.4a1 1 0 0 0-1 1v5.3H5.5A1.5 1.5 0 0 1 4 19z"/>',
+  users: '<circle cx="9.3" cy="8.4" r="3.4"/><path d="M3.3 19.6c.6-3.4 3-5.4 6-5.4s5.4 2 6 5.4"/><path d="M15.6 5.2a3.2 3.2 0 0 1 0 6.3"/><path d="M17.6 14.7c1.7.7 2.8 2.4 3.1 4.9"/>',
+  cal: '<rect x="3.6" y="5.2" width="16.8" height="15.2" rx="3"/><path d="M3.6 10h16.8M8.2 3.4v3.4M15.8 3.4v3.4"/><path d="M8 14h.01M12 14h.01M16 14h.01M8 17.2h.01M12 17.2h.01" stroke-width="2.2"/>',
   cog: '<path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/>',
   plus: '<path d="M12 5v14M5 12h14"/>', search: '<circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4.2-4.2"/>', back: '<path d="M15 6l-6 6 6 6"/>', chev: '<path d="M9 6l6 6-6 6"/>',
   check: '<path d="M5 12.5l4.5 4.5L19 7.5"/>', x: '<path d="M6 6l12 12M18 6 6 18"/>',
@@ -39,7 +39,9 @@ const ic = {
   link: '<path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/>',
   renew: '<path d="M19 12a7 7 0 1 1-2.1-5"/><path d="M19 4v4h-4"/>', edit: '<path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13.5 6.5l4 4"/>', trash: '<path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/>', file: '<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h4"/>',
   tag: '<path d="M3.5 12.2V4.5a1 1 0 0 1 1-1h7.7l8.3 8.3a1.5 1.5 0 0 1 0 2.1l-6.6 6.6a1.5 1.5 0 0 1-2.1 0z"/><circle cx="8" cy="8" r="1.5"/>',
-  user: '<circle cx="12" cy="8" r="4"/><path d="M4 21c1-4.5 4.2-7 8-7s7 2.5 8 7"/>',
+  user: '<circle cx="12" cy="12" r="8.6"/><circle cx="12" cy="10" r="3"/><path d="M6.6 18.5c1.2-2.2 3.1-3.4 5.4-3.4s4.2 1.2 5.4 3.4"/>',
+  lotus: '<path d="M12 20.2c-2.7-1.6-4.3-4.4-4.3-7.5 0-2.9 1.5-5.7 4.3-8.2 2.8 2.5 4.3 5.3 4.3 8.2 0 3.1-1.6 5.9-4.3 7.5z"/><path d="M12 20.2c-4.6.4-8.4-2.1-9.5-6.9 1.9-.8 3.9-.9 5.7-.4"/><path d="M12 20.2c4.6.4 8.4-2.1 9.5-6.9-1.9-.8-3.9-.9-5.7-.4"/>',
+  clock: '<circle cx="12" cy="12" r="8.6"/><path d="M12 7.5V12l3 2"/>',
   cam: '<path d="M4 8h3l2-2.5h6L17 8h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/><circle cx="12" cy="13" r="3.5"/>',
   img: '<rect x="3.5" y="4.5" width="17" height="15" rx="2"/><circle cx="9" cy="10" r="1.8"/><path d="M20.5 16l-5-5-8.5 8.5"/>',
 };
@@ -57,6 +59,50 @@ function sugerirValor(form) {
 function chipsProc(atual) {
   const nomes = nomesProc(), tem = nomes.some(n => n.toLowerCase() === String(atual || '').toLowerCase());
   return `<div class="chips">${nomes.map(x => `<button type="button" class="chip ${x.toLowerCase() === String(atual || '').toLowerCase() ? 'on' : ''}" data-acao="proc" data-v="${esc(x)}">${esc(x)}</button>`).join('')}<button type="button" class="chip ${tem ? '' : 'on'}" data-acao="proc" data-v="">Outro</button></div>`;
+}
+
+// Campo "data e horário": mostra o valor e abre o calendário do app (guarda em dia/hora escondidos)
+const txtDH = (dia, hora) => { if (!dia) return ''; const t = new Date(dia + 'T12:00').toLocaleDateString('pt-BR', { weekday: 'short', day: 'numeric', month: 'short' }); return t.charAt(0).toUpperCase() + t.slice(1) + ' · ' + (hora || '09:00'); };
+function campoDH(dia, hora, semData, vazio) {
+  return `<div class="campo-wrap" data-sem="${semData ? 1 : ''}" data-vazio="${esc(vazio || 'Escolher data e horário')}"><button type="button" class="inp campo-dh" data-acao="pk-abrir">${I('cal')}<span class="${dia ? '' : 'vazio'}">${dia ? txtDH(dia, hora) : esc(vazio || 'Escolher data e horário')}</span></button><input type="hidden" name="dia" value="${dia || ''}"><input type="hidden" name="hora" value="${hora || '09:00'}"></div>`;
+}
+let PK = null;
+function abrirPicker(campo) {
+  const dia = campo.querySelector('[name="dia"]').value, hora = campo.querySelector('[name="hora"]').value || '09:00';
+  const base = dia ? new Date(dia + 'T12:00') : new Date();
+  PK = { campo, dia, hora, ano: base.getFullYear(), mes: base.getMonth(), semData: campo.dataset.sem === '1' };
+  desenharPicker(true);
+}
+function desenharPicker(rolarHora) {
+  const { ano, mes } = PK, hoje = diaKey(new Date());
+  const ini0 = new Date(ano, mes, 1).getDay(), nDias = new Date(ano, mes + 1, 0).getDate();
+  const nomeMes = new Date(ano, mes, 1).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+  let dias = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'].map(x => `<span class="sem">${x}</span>`).join('') + '<span></span>'.repeat(ini0);
+  for (let d = 1; d <= nDias; d++) {
+    const k = `${ano}-${pad(mes + 1)}-${pad(d)}`;
+    dias += `<button type="button" class="${k === PK.dia ? 'on' : ''}${k === hoje ? ' hoje' : ''}${k < hoje ? ' passou' : ''}" data-acao="pk-dia" data-v="${k}" aria-label="${d} de ${nomeMes}">${d}</button>`;
+  }
+  const horas = []; for (let m = 6 * 60; m <= 21 * 60; m += 15) horas.push(pad(Math.floor(m / 60)) + ':' + pad(m % 60));
+  if (!horas.includes(PK.hora)) { horas.push(PK.hora); horas.sort(); }
+  const tit = PK.dia ? (t => t.charAt(0).toUpperCase() + t.slice(1))(new Date(PK.dia + 'T12:00').toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })).replace('-feira', '') : 'Escolha o dia';
+  const rolagem = $('#pk-horas') ? $('#pk-horas').scrollLeft : 0;
+  $('#picker').innerHTML = `<div class="pk-bg" data-acao="pk-fundo"><div class="sheet" role="dialog" aria-modal="true" aria-label="Escolher data e horário"><div class="grip"></div>
+    <div class="between" style="align-items:flex-start"><div><span class="tag">Data e horário</span><h2 class="s" style="font-size:24px;margin-top:2px">${tit}</h2>${PK.dia ? `<span class="ink2" style="font-size:14px">às ${PK.hora}</span>` : ''}</div><button type="button" class="icon-btn plain" data-acao="pk-fechar" aria-label="Fechar">${I('x')}</button></div>
+    <div class="pk-mes"><button type="button" class="icon-btn" data-acao="pk-mes" data-v="-1" aria-label="Mês anterior">${I('back')}</button><b>${nomeMes.charAt(0).toUpperCase() + nomeMes.slice(1)}</b><button type="button" class="icon-btn" data-acao="pk-mes" data-v="1" aria-label="Próximo mês">${I('chev')}</button></div>
+    <div class="pk-grade">${dias}</div>
+    <div class="stack" style="gap:8px"><span class="tag" style="display:flex;align-items:center;gap:6px">${I('clock').replace('class="i"', 'class="i" style="width:16px;height:16px"')} Horário</span><div class="pk-horas" id="pk-horas">${horas.map(h => `<button type="button" class="chip ${h === PK.hora ? 'on' : ''}" data-acao="pk-hora" data-v="${h}">${h}</button>`).join('')}</div></div>
+    <button type="button" class="btn" data-acao="pk-ok">${I('check', 2)} Confirmar</button>
+    ${PK.semData ? '<button type="button" class="btn ghost" data-acao="pk-limpar">Deixar sem data</button>' : ''}</div></div>`;
+  const faixa = $('#pk-horas');
+  if (rolarHora) { const on = faixa.querySelector('.on'); if (on) faixa.scrollLeft = on.offsetLeft - faixa.clientWidth / 2 + on.offsetWidth / 2; }
+  else faixa.scrollLeft = rolagem;
+}
+function fecharPicker() { $('#picker').innerHTML = ''; PK = null; }
+function aplicarPicker(dia) {
+  const c = PK.campo, sp = c.querySelector('.campo-dh span');
+  c.querySelector('[name="dia"]').value = dia; c.querySelector('[name="hora"]').value = PK.hora;
+  sp.textContent = dia ? txtDH(dia, PK.hora) : c.dataset.vazio; sp.className = dia ? '' : 'vazio';
+  fecharPicker();
 }
 
 function toast(msg) {
@@ -125,7 +171,7 @@ function mensagemPlano(pl) {
 /* ═══ ROTAS ═══ */
 function rota() { return (location.hash || '#/inicio').slice(2).split('/'); }
 function ir(h) { if (location.hash === h) render(); else location.hash = h; }
-window.addEventListener('hashchange', () => { fecharSheet(); render(); });
+window.addEventListener('hashchange', () => { fecharPicker(); fecharSheet(); render(); });
 
 function render() {
   const app = $('#app');
@@ -146,8 +192,8 @@ function render() {
 }
 function nav(r) {
   const on = { inicio: 'inicio', pacientes: 'pacientes', paciente: 'pacientes', plano: 'pacientes', agenda: 'agenda', procedimentos: 'procedimentos', usuario: 'usuario', ajustes: 'usuario' }[r] || 'inicio';
-  const a = (k, h, n, t) => `<a href="#/${h}" class="${on === k ? 'on' : ''}">${I(n, on === k ? 1.9 : 1.6)}${t}</a>`;
-  return `<nav class="tab" aria-label="Navegação principal">${a('inicio', 'inicio', 'home', 'Início')}${a('pacientes', 'pacientes', 'users', 'Pacientes')}${a('procedimentos', 'procedimentos', 'tag', 'Procedimentos')}${a('agenda', 'agenda', 'cal', 'Agenda')}${a('usuario', 'usuario', 'user', 'Usuário')}</nav>`;
+  const a = (k, h, n, t) => `<a href="#/${h}" class="${on === k ? 'on' : ''}"${on === k ? ' aria-current="page"' : ''}><span class="ic">${I(n)}</span>${t}</a>`;
+  return `<nav class="tab" aria-label="Navegação principal">${a('inicio', 'inicio', 'home', 'Início')}${a('pacientes', 'pacientes', 'users', 'Pacientes')}${a('procedimentos', 'procedimentos', 'lotus', 'Procedimentos')}${a('agenda', 'agenda', 'cal', 'Agenda')}${a('usuario', 'usuario', 'user', 'Usuário')}</nav>`;
 }
 
 /* ═══ TELAS ═══ */
@@ -323,7 +369,7 @@ function vNovoPlano(pacId) {
         <div class="row" style="gap:4px"><button type="button" class="icon-btn" data-acao="qtd" data-v="-1" aria-label="Menos uma sessão">−</button>
         <input name="qtd" type="number" min="1" max="50" value="5" class="serif" style="width:48px;text-align:center;font-size:30px;font-weight:700;border:0;background:transparent" aria-label="Número de sessões">
         <button type="button" class="icon-btn acc" style="background:var(--ink)" data-acao="qtd" data-v="1" aria-label="Mais uma sessão">+</button></div></div>
-      <div class="grid3" style="grid-template-columns:repeat(2,minmax(0,1fr))"><label class="f">1ª sessão<input class="inp" type="date" name="dia"></label><label class="f">Horário<input class="inp" type="time" name="hora" value="09:00"></label></div>
+      <div class="f">1ª sessão (opcional)${campoDH('', '09:00', true, 'Escolher data e horário')}</div>
       <label class="f">Valor do pacote (opcional)<input class="inp" name="valor" inputmode="decimal" placeholder="R$ 0,00" value="${valorSug(proc0, 5)}"><span class="muted" style="font-size:12px;font-weight:400;letter-spacing:0">Calculado pelo valor da sessão vezes o número de sessões. Pode alterar.</span></label>
       <p class="ink2" style="font-size:13px;text-align:center">As demais datas você agenda ao concluir cada sessão.</p>
       <button class="btn" type="submit">Criar plano</button>
@@ -346,6 +392,8 @@ function vAgenda() {
 function vUsuario() {
   return `<div class="wrap"><h1 class="t">Usuário</h1>
     <section class="card row"><button class="av-btn" data-acao="foto" data-tipo="equipe" aria-label="Trocar sua foto">${av(st.membro.nome, st.membro.foto, 'g')}<span class="cam">${I('cam')}</span></button><div><b style="font-weight:500;font-size:17px">${esc(st.membro.nome)}</b><div class="ink2" style="font-size:13px">${esc(st.user.email)} · ${st.membro.papel === 'admin' ? 'Administrador(a)' : 'Terapeuta'}</div></div></section>
+    <section class="card stack"><div class="tag">Seu nome</div>
+      <form data-form="meu-nome" class="stack"><input class="inp" name="nome" value="${esc(st.membro.nome)}" maxlength="60" autocomplete="name" aria-label="Seu nome" required><button class="btn sm" type="submit" style="width:100%">Salvar nome</button></form></section>
     <section class="card stack"><div class="tag">Trocar senha</div>
       <form data-form="trocar-senha" class="stack"><input class="inp" type="password" name="s1" minlength="6" placeholder="Nova senha" autocomplete="new-password" required>
       <input class="inp" type="password" name="s2" minlength="6" placeholder="Repita a nova senha" autocomplete="new-password" required><button class="btn sm" type="submit" style="width:100%">Salvar nova senha</button></form></section>
@@ -370,7 +418,7 @@ function listarProcs() {
   const lista = st.procs.filter(p => !ql || p.nome.toLowerCase().includes(ql));
   const usos = n => st.planos.filter(pl => pl.status === 'ativo' && pl.procedimento.toLowerCase() === n.toLowerCase()).length;
   $('#lista-proc').innerHTML = lista.length ? lista.map(p => { const u = usos(p.nome); return `<button class="item" data-acao="editar-proc" data-id="${p.id}" style="border-radius:0;border-bottom:1px solid var(--divider)">
-      <div class="av" style="background:var(--soft);color:var(--ink2)">${I('tag')}</div>
+      <div class="av" style="background:var(--soft);color:var(--ink2)">${I('lotus')}</div>
       <div class="txt"><b>${esc(p.nome)}</b><span>${u ? `${u} ${u === 1 ? 'plano ativo' : 'planos ativos'}` : 'Nenhum plano ativo'}</span></div>
       <div style="display:flex;flex-direction:column;align-items:flex-end;flex-shrink:0">${p.valor != null ? `<span class="preco">${moeda(p.valor)}</span><small class="muted" style="font-size:11px">por sessão</small>` : '<span class="badge b-warn">SEM VALOR</span>'}</div></button>`; }).join('')
     : `<div class="empty" style="margin:12px">${q ? `Nenhum procedimento com "${esc(q)}".<br><button class="btn sm" style="margin-top:12px" data-acao="novo-proc" data-nome="${esc(q)}">${I('plus')} Cadastrar "${esc(q)}"</button>` : 'Nenhum procedimento cadastrado.'}</div>`;
@@ -492,10 +540,10 @@ function sheetConcluir(sesId) {
       <div class="seg"><button type="button" class="on" data-acao="seg" data-v="ok">Realizada</button><button type="button" data-acao="seg" data-v="falta">Paciente faltou</button></div>
       <input type="hidden" name="tipo" value="ok">
       <div id="bloco-prox" class="stack" style="gap:8px">${prox ? `<span class="tag" id="rotulo-data" data-ok="Próxima sessão (${prox.numero}ª)" data-falta="Remarcar a ${s.numero}ª sessão para">Próxima sessão (${prox.numero}ª)</span>
-        <div class="grid3" style="grid-template-columns:repeat(2,minmax(0,1fr))"><input class="inp" type="date" name="dia" value="${prox.data_hora ? diaKey(new Date(prox.data_hora)) : diaKey(sug)}" aria-label="Data"><input class="inp" type="time" name="hora" value="${prox.data_hora ? fHora(prox.data_hora) : fHora(base.toISOString())}" aria-label="Horário"></div>
-        <span class="muted" style="font-size:12px">Deixe a data em branco se ainda não foi marcada.</span>`
+        ${campoDH(prox.data_hora ? diaKey(new Date(prox.data_hora)) : diaKey(sug), prox.data_hora ? fHora(prox.data_hora) : fHora(base.toISOString()), true, 'Ainda sem data')}
+        <span class="muted" style="font-size:12px">Ainda não marcou? Toque na data e escolha "Deixar sem data".</span>`
         : `<span class="tag" id="rotulo-data" data-ok="Última sessão do pacote" data-falta="Remarcar a ${s.numero}ª sessão para">Última sessão do pacote</span><span class="muted" style="font-size:12px" id="aviso-ultima">Ao concluir, o plano será finalizado.</span>
-        <div class="grid3" id="remarcar" style="grid-template-columns:repeat(2,minmax(0,1fr));display:none"><input class="inp" type="date" name="dia" aria-label="Data"><input class="inp" type="time" name="hora" value="${fHora(base.toISOString())}" aria-label="Horário"></div>`}</div>
+        <div id="remarcar" style="display:none">${campoDH('', fHora(base.toISOString()), true, 'Escolher nova data')}</div>`}</div>
       <label class="switch">Atualizar a paciente no WhatsApp<input type="checkbox" name="whats" checked></label>
       <button class="btn" type="submit">${I('check', 2)} Confirmar</button></form>`);
 }
@@ -504,7 +552,7 @@ function sheetSessao(sesId) {
   const ok = s.status === 'concluida';
   abrirSheet(`<div class="between" style="align-items:flex-start"><div><h2 class="s" style="font-size:27px">${s.numero}ª sessão</h2><div class="ink2" style="font-size:13px">${esc(pl.procedimento)} · ${ok ? 'realizada' : s.data_hora ? 'agendada' : 'a agendar'}</div></div><button class="icon-btn plain" data-acao="fechar" aria-label="Fechar">${I('x')}</button></div>
     <form data-form="sessao" data-id="${sesId}" class="stack" style="gap:14px">
-      <div class="grid3" style="grid-template-columns:repeat(2,minmax(0,1fr))"><label class="f">Data<input class="inp" type="date" name="dia" value="${s.data_hora ? diaKey(new Date(s.data_hora)) : ''}" ${ok ? 'required' : ''}></label><label class="f">Horário<input class="inp" type="time" name="hora" value="${s.data_hora ? fHora(s.data_hora) : '09:00'}"></label></div>
+      <div class="f">Data e horário${campoDH(s.data_hora ? diaKey(new Date(s.data_hora)) : '', s.data_hora ? fHora(s.data_hora) : '09:00', !ok, 'A agendar')}</div>
       <label class="f">Observação<textarea class="inp" name="obs" placeholder="Ex.: paciente pediu pressão mais leve">${esc(s.observacao || '')}</textarea></label>
       <button class="btn" type="submit">Salvar</button>
       ${ok ? `<button class="btn ghost" type="button" data-acao="desfazer-sessao" data-id="${sesId}">Marcar como não realizada</button>
@@ -624,6 +672,14 @@ document.addEventListener('click', async e => {
   const el = e.target.closest('[data-acao]'); if (!el) return;
   const a = el.dataset.acao, id = el.dataset.id;
   if (a === 'fechar-fundo') { if (e.target === el) fecharSheet(); return; }
+  if (a === 'pk-abrir') return abrirPicker(el.closest('.campo-wrap'));
+  if (a === 'pk-fundo') { if (e.target === el) fecharPicker(); return; }
+  if (a === 'pk-fechar') return fecharPicker();
+  if (a === 'pk-mes') { const d = new Date(PK.ano, PK.mes + Number(el.dataset.v), 1); PK.ano = d.getFullYear(); PK.mes = d.getMonth(); return desenharPicker(); }
+  if (a === 'pk-dia') { PK.dia = el.dataset.v; return desenharPicker(); }
+  if (a === 'pk-hora') { PK.hora = el.dataset.v; return desenharPicker(); }
+  if (a === 'pk-ok') { if (!PK.dia) return toast('Escolha o dia no calendário.'); return aplicarPicker(PK.dia); }
+  if (a === 'pk-limpar') return aplicarPicker('');
   if (a === 'fechar') return fecharSheet();
   if (a === 'voltar') return history.length > 1 ? history.back() : ir('#/inicio');
   if (a === 'filtro') { st.ui.filtro = el.dataset.v; document.querySelectorAll('[data-acao="filtro"]').forEach(c => c.classList.toggle('on', c === el)); return listarPacientes(); }
@@ -834,6 +890,12 @@ async function enviarForm(tipo, form) {
       if (error) throw error;
     }, 'Ficha salva.');
     if (ok) { st.anam = null; ir('#/paciente/' + p.id); }
+    return;
+  }
+  if (tipo === 'meu-nome') {
+    const nome = v('nome').replace(/\s+/g, ' ');
+    if (nome.length < 2) return toast('Escreva seu nome.');
+    if (await salvar(async () => { const r = await sb.from('equipe').update({ nome }).eq('user_id', st.user.id); if (r.error) throw r.error; st.membro.nome = nome; }, 'Nome atualizado.')) render();
     return;
   }
   if (tipo === 'proc') {
