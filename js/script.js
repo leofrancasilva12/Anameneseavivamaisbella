@@ -625,6 +625,50 @@
     `).join('');
   }
 
+  /* ─── BANCO DE DADOS (Supabase) ───
+     Quando a cliente toca em "Gerar PDF e enviar", a ficha é gravada no banco da clínica.
+     A chave abaixo é a chave PÚBLICA: ela só permite depositar a ficha, nunca ler dados.
+     Se a gravação falhar (internet ruim, por exemplo), o PDF e o WhatsApp seguem normalmente. */
+  const SUPABASE_URL = 'https://swavuilayxhrfaswlqtg.supabase.co';
+  const SUPABASE_CHAVE_PUBLICA = 'sb_publishable_piYI-qmlscPYc-hjeQJ44Q_dKHI5LTc';
+  let ultimaFichaGravada = '';
+
+  function montarFichaParaBanco() {
+    guardarRespostas();
+    const idade = parseInt(getVal('idade'), 10);
+    return {
+      p_nome: getVal('nome') === '—' ? '' : getVal('nome'),
+      p_telefone: getVal('telefone') === '—' ? '' : getVal('telefone'),
+      p_idade: Number.isFinite(idade) ? idade : null,
+      p_servicos: servicosEscolhidos().map(s => s.nome),
+      p_respostas: respostas,
+      p_resumo: montarDadosResumo().map(s => ({ titulo: s.title, destaque: !!s.destaque, linhas: s.rows })),
+      p_pontos_atencao: pontosDeAtencao().map(([pergunta, resposta]) => ({ pergunta, resposta })),
+      p_consentimento: document.getElementById('consentimento').checked,
+      p_assinatura: getVal('assinatura') === '—' ? '' : getVal('assinatura'),
+    };
+  }
+
+  // Não espera a resposta: o envio do PDF não pode ficar travado esperando o banco.
+  // "keepalive" garante que a gravação termina mesmo se a cliente sair da página.
+  function gravarFichaNoBanco() {
+    try {
+      const corpo = JSON.stringify(montarFichaParaBanco());
+      if (corpo === ultimaFichaGravada) return;   // mesma ficha tocada duas vezes: grava uma só
+      ultimaFichaGravada = corpo;
+      fetch(`${SUPABASE_URL}/rest/v1/rpc/registrar_anamnese`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', apikey: SUPABASE_CHAVE_PUBLICA },
+        body: corpo,
+        keepalive: corpo.length < 60000,
+      }).then(r => {
+        if (!r.ok) { ultimaFichaGravada = ''; r.text().then(t => console.warn('Ficha não gravada:', t)); }
+      }).catch(e => { ultimaFichaGravada = ''; console.warn('Ficha não gravada:', e); });
+    } catch (e) {
+      console.warn('Ficha não gravada:', e);
+    }
+  }
+
   /* ─── PDF ───
      O PDF é gerado no celular da cliente. A biblioteca e a logo são carregadas
      quando a tela de revisão abre, para o botão responder na hora. */
@@ -750,6 +794,7 @@
     const btn = document.getElementById('btnPdf');
     const label = btn.querySelector('span');
     btn.disabled = true; label.textContent = 'Gerando PDF...';
+    gravarFichaNoBanco();
     try {
       await prepararPDF();
       const doc = gerarPDF();
