@@ -526,6 +526,39 @@ function ocupacao(dia, hora) {
   return null;
 }
 const mesmoConjunto = (a, b) => a.length === b.length && a.every(x => b.includes(x));
+(function estilosHorarios() {
+  if (document.getElementById('css-horarios')) return;
+  const c = document.createElement('style'); c.id = 'css-horarios';
+  c.textContent = `
+.hor-grade button{position:relative}
+.hor-grade button.fechado:not(.on):not(.fer){color:#BBAA9A;text-decoration:line-through;text-decoration-color:rgba(59,38,22,.25)}
+.hor-grade button.fer:not(.on){background:#F3DDD3;color:#9A3F1E;font-weight:600;text-decoration:none}
+.hor-grade button.fer.on{background:#9A3F1E;color:#fff}
+.hor-grade button.tem::after{content:"";position:absolute;left:50%;bottom:5px;width:5px;height:5px;margin-left:-2.5px;border-radius:3px;background:var(--ok)}
+.hor-grade button.on.tem::after{background:var(--onink)}
+.hor-grade button.fer::before{display:none}
+.leg{display:flex;flex-wrap:wrap;gap:8px;padding-top:4px;border-top:1px solid var(--divider)}
+.leg span{display:inline-flex;align-items:center;gap:7px;font-size:12px;color:var(--ink2);background:var(--bg);border-radius:20px;padding:6px 11px 6px 8px}
+.leg i{width:18px;height:18px;border-radius:9px;display:inline-flex;align-items:center;justify-content:center;font-style:normal;font-size:10px;font-weight:600}
+.leg .l-aj{background:#fff;position:relative}.leg .l-aj::after{content:"";width:6px;height:6px;border-radius:3px;background:var(--ok)}
+.leg .l-fer{background:#F3DDD3;color:#9A3F1E}
+.leg .l-fec{color:#BBAA9A;text-decoration:line-through}
+.fer-aviso{display:flex;gap:12px;align-items:center;background:#F3DDD3;color:#7A3418;border-radius:16px;padding:12px 14px}
+.fer-aviso svg.i{flex-shrink:0;color:#9A3F1E}
+.fer-aviso b{display:block;font-size:15px}.fer-aviso span{font-size:13px;opacity:.9}
+.fer-lista{display:flex;flex-direction:column;gap:8px}
+.fer-item{display:flex;align-items:center;gap:14px;width:100%;background:var(--card);border:0;border-radius:18px;padding:10px 14px 10px 10px;text-align:left;cursor:pointer;color:var(--ink);font:inherit}
+.fer-data{width:52px;height:52px;flex-shrink:0;border-radius:14px;background:#F3DDD3;color:#9A3F1E;display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1}
+.fer-data b{font-family:'Cormorant Garamond',serif;font-size:24px;font-weight:700}
+.fer-data small{font-size:10px;font-weight:600;letter-spacing:.12em;margin-top:2px}
+.fer-item.aberto .fer-data{background:var(--okbg);color:var(--oktext)}
+.fer-txt{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.fer-txt b{font-weight:500;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fer-txt span{font-size:12px;color:var(--muted)}
+.fer-item .badge{flex-shrink:0}
+.fer-item svg.i{color:var(--muted);width:18px;height:18px;flex-shrink:0}`;
+  document.head.appendChild(c);
+})();
 function vHorarios() {
   const H = st.hor || (st.hor = { dia: diaKey(new Date()), mes: null, sel: null });
   const base = new Date(H.dia + 'T12:00'); if (!H.mes) H.mes = [base.getFullYear(), base.getMonth()];
@@ -547,21 +580,26 @@ function vHorarios() {
   }).join('');
   const t = new Date(H.dia + 'T12:00').toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' }).replace('-feira', '');
   const pad0 = horasPadrao(H.dia), descPadrao = pad0.length ? (new Date(H.dia + 'T12:00').getDay() === 6 ? 'sábado, 8h às 12h' : 'dia útil, 8h às 18h') : 'domingo, fechado';
-  const situ = e ? (e.horas.length ? 'Horário ajustado por você' : 'Fechado por você') : fer ? `Feriado: ${esc(fer.nome)} (fechado)` : `Padrão (${descPadrao})`;
+  const situ = e ? (e.horas.length ? 'Horário ajustado por você' : 'Fechado por você') : fer ? 'Feriado' : `Padrão (${descPadrao})`;
   const n = H.sel.horas.size;
   return `<div class="wrap" style="padding-bottom:30px">
     <header class="row" style="justify-content:space-between"><a class="icon-btn plain" href="#/agenda" aria-label="Voltar">${I('back')}</a><span style="font-weight:500">Horários de atendimento</span><span style="width:44px"></span></header>
     <div class="card" style="background:var(--soft);font-size:14px;line-height:1.55"><b style="font-weight:600">Padrão:</b> segunda a sexta das 8h às 18h, sábado das 8h às 12h, domingo e feriados fechados. Toque num dia para mudar só aquele dia.</div>
     <section class="card stack"><div class="pk-mes"><button type="button" class="icon-btn" data-acao="hor-mes" data-v="-1" aria-label="Mês anterior">${I('back')}</button><b>${nomeMes.charAt(0).toUpperCase() + nomeMes.slice(1)}</b><button type="button" class="icon-btn" data-acao="hor-mes" data-v="1" aria-label="Próximo mês">${I('chev')}</button></div>
       <div class="pk-grade hor-grade">${dias}</div>
-      <div class="legenda"><span><i class="ponto"></i> horário ajustado</span><span><i class="risco">12</i> fechado</span><span><i class="ponto fer"></i> feriado</span></div></section>
+      <div class="leg"><span><i class="l-fer">8</i>Feriado</span><span><i class="l-aj"></i>Horário ajustado</span><span><i class="l-fec">8</i>Fechado</span></div></section>
+    ${fer ? `<div class="fer-aviso">${I('cal')}<div><b>Feriado · ${esc(fer.nome)}</b><span>${n ? 'Você abriu este feriado para atendimento.' : 'Fechado para as clientes. Para atender, abra os horários abaixo.'}</span></div></div>` : ''}
     <section class="card stack"><div class="between" style="align-items:flex-start"><div><span class="tag">${situ}</span><h2 class="s" style="font-size:22px;margin-top:2px">${esc(t.charAt(0).toUpperCase() + t.slice(1))}</h2></div><span class="badge ${n ? 'b-ok' : 'b-warn'}">${n ? `${n} ${n === 1 ? 'HORÁRIO' : 'HORÁRIOS'}` : 'FECHADO'}</span></div>
       <div class="hor-horas">${chips}</div>
       <div class="row" style="gap:8px;flex-wrap:wrap">${n ? '<button type="button" class="btn sm ghost" data-acao="hor-fechar">Fechar o dia todo</button>' : ''}${(pad0.length && !fer && !mesmoConjunto(atual, pad0)) ? `<button type="button" class="btn sm ghost" data-acao="hor-padrao">Usar o padrão</button>` : ''}${!pad0.length || fer ? '<button type="button" class="btn sm ghost" data-acao="hor-abrir">Abrir 8h às 18h</button>' : ''}</div>
       <button class="btn" data-acao="hor-salvar" ${mudou ? '' : 'disabled'}>${I('check', 2)} ${mudou ? 'Salvar este dia' : 'Salvo'}</button>
       ${e && !mudou ? '<button class="btn ghost" data-acao="hor-desfazer">Desfazer ajuste (voltar ao padrão)</button>' : ''}
       ${fer ? `<button class="btn ghost" data-acao="hor-tirar-feriado">${I('trash')} Não é feriado</button>` : `<button class="btn ghost" data-acao="hor-feriado">Marcar como feriado</button>`}</section>
-    ${st.feriados.length ? `<section class="stack"><h2 class="s" style="font-size:20px">Próximos feriados</h2><div class="card" style="padding:4px 16px">${st.feriados.slice(0, 8).map(f => `<button class="fer-lin" data-acao="hor-dia" data-v="${f.dia}"><span>${esc(f.nome)}</span><small>${new Date(f.dia + 'T12:00').toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit' })}${especialDe(f.dia) && especialDe(f.dia).horas.length ? ' · aberto' : ''}</small></button>`).join('')}</div></section>` : ''}
+    ${st.feriados.length ? `<section class="stack"><div class="between"><h2 class="s" style="font-size:22px">Próximos feriados</h2><span class="muted" style="font-size:12px">Toque para abrir ou editar</span></div><div class="fer-lista">${st.feriados.slice(0, st.ui.todosFer ? 99 : 6).map(f => {
+      const d = new Date(f.dia + 'T12:00'), aberto = especialDe(f.dia) && especialDe(f.dia).horas.length;
+      const sem = d.toLocaleDateString('pt-BR', { weekday: 'long' }), mesC = d.toLocaleDateString('pt-BR', { month: 'short' }).replace('.', '').toUpperCase();
+      return `<button class="fer-item ${aberto ? 'aberto' : ''}" data-acao="hor-dia" data-v="${f.dia}"><span class="fer-data"><b>${d.getDate()}</b><small>${mesC}</small></span><span class="fer-txt"><b>${esc(f.nome)}</b><span>${esc(sem.charAt(0).toUpperCase() + sem.slice(1))}${d.getFullYear() !== new Date().getFullYear() ? ' · ' + d.getFullYear() : ''}</span></span><span class="badge ${aberto ? 'b-ok' : 'b-warn'}">${aberto ? 'ABERTO' : 'FECHADO'}</span>${I('chev')}</button>`;
+    }).join('')}</div>${st.feriados.length > 6 && !st.ui.todosFer ? `<button class="btn ghost sm" style="align-self:center" data-acao="hor-todos-fer">Ver todos os ${st.feriados.length} feriados</button>` : ''}</section>` : ''}
   </div>`;
 }
 async function salvarDia(dia, horas) {
@@ -894,9 +932,10 @@ document.addEventListener('click', async e => {
   if (a === 'menu-plano') return sheetMenuPlano(id);
   if (a && a.startsWith('hor-')) {
     const H = st.hor, y = window.scrollY, redesenha = () => { render(); window.scrollTo(0, y); };
-    if (a === 'hor-dia') { H.dia = el.dataset.v; const d = new Date(H.dia + 'T12:00'); H.mes = [d.getFullYear(), d.getMonth()]; H.sel = null; render(); if (el.classList.contains('fer-lin')) window.scrollTo(0, 0); else window.scrollTo(0, y); return; }
+    if (a === 'hor-dia') { H.dia = el.dataset.v; const d = new Date(H.dia + 'T12:00'); H.mes = [d.getFullYear(), d.getMonth()]; H.sel = null; render(); if (el.classList.contains('fer-item')) window.scrollTo(0, 0); else window.scrollTo(0, y); return; }
     if (a === 'hor-mes') { const d = new Date(H.mes[0], H.mes[1] + Number(el.dataset.v), 1); H.mes = [d.getFullYear(), d.getMonth()]; return redesenha(); }
     if (a === 'hor-hora') { const v = el.dataset.v; if (H.sel.horas.has(v)) H.sel.horas.delete(v); else H.sel.horas.add(v); return redesenha(); }
+    if (a === 'hor-todos-fer') { st.ui.todosFer = true; return redesenha(); }
     if (a === 'hor-padrao') { H.sel.horas = new Set(horasPadrao(H.dia)); return redesenha(); }
     if (a === 'hor-abrir') { H.sel.horas = new Set(gradeHoras().filter(h => h >= '08:00' && h <= '17:30')); return redesenha(); }
     if (a === 'hor-fechar') {
