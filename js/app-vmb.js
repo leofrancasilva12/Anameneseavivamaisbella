@@ -9,7 +9,7 @@ const VAPID_PUBLICA = 'BI4O76RINypnTN4N80eZfgpOMHpmG0aQG3K4V7icBLHPz9w7vlQ_eCvDo
 const PROC_PADRAO = ['Drenagem linfática', 'Massagem modeladora', 'Limpeza de pele', 'Massagem relaxante', 'Liberação miofascial', 'Depilação'];
 
 const sb = supabase.createClient(SB_URL, SB_KEY, { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } });
-const st = { user: null, membro: null, pacientes: [], planos: [], fichas: [], procs: [], pedidos: [], livres: [], fotos: {}, avisos: '', ui: { busca: '', buscaProc: '', filtro: 'todas' }, recuperando: false };
+const st = { user: null, membro: null, pacientes: [], planos: [], fichas: [], procs: [], pedidos: [], especiais: [], feriados: [], fotos: {}, avisos: '', ui: { busca: '', buscaProc: '', filtro: 'todas' }, recuperando: false };
 const nomesProc = () => st.procs.length ? st.procs.map(p => p.nome) : PROC_PADRAO;
 
 /* ═══ UTILIDADES ═══ */
@@ -226,20 +226,22 @@ function fecharSheet() { $('#sheet').innerHTML = ''; }
 
 /* ═══ DADOS ═══ */
 async function carregar() {
-  const [p, pl, f, pr, pd, hl] = await Promise.all([
+  const [p, pl, f, pr, pd, de, fe] = await Promise.all([
     sb.from('pacientes').select('id,nome,telefone,idade,endereco,foto,criado_em').order('nome'),
     sb.from('planos').select('id,paciente_id,procedimento,total_sessoes,valor,status,codigo_publico,criado_em,sessoes(id,numero,data_hora,status,observacao,concluida_em)').order('criado_em', { ascending: false }),
     sb.from('anamneses').select('id,paciente_id,servicos,pontos_atencao,enviada_em').order('enviada_em', { ascending: false }),
     sb.from('procedimentos').select('id,nome,valor,duracao_min').order('nome'),
     sb.from('pedidos_horario').select('id,plano_id,data_hora,criado_em').eq('status', 'pendente').order('data_hora'),
-    sb.from('horarios_livres').select('id,inicio').gte('inicio', new Date(Date.now() - 864e5).toISOString()).order('inicio'),
+    sb.from('dias_especiais').select('dia,horas').gte('dia', diaKey(new Date())),
+    sb.from('feriados').select('dia,nome').gte('dia', diaKey(new Date())).order('dia'),
   ]);
   for (const r of [p, pl, f]) if (r.error) throw r.error;
   st.pacientes = p.data; st.planos = pl.data; st.fichas = f.data;
   st.planos.forEach(x => x.sessoes.sort((a, b) => a.numero - b.numero));
   st.procs = pr.error ? [] : pr.data;
   st.pedidos = pd.error ? [] : pd.data.filter(x => st.planos.some(pl => pl.id === x.plano_id && pl.status === 'ativo'));
-  st.livres = hl.error ? [] : hl.data;
+  st.especiais = de.error ? [] : de.data.map(x => ({ dia: x.dia, horas: (x.horas || []).map(h => h.slice(0, 5)) }));
+  st.feriados = fe.error ? [] : fe.data;
   st.carregadoEm = Date.now();
   await carregarFotos();
 }
@@ -496,12 +498,17 @@ function vNovoPlano(pacId) {
     </form></div>`;
 }
 
-/* ═══ HORÁRIOS LIVRES (a Rauana libera, a cliente escolhe na página dela) ═══ */
+/* ═══ HORÁRIOS DE ATENDIMENTO
+   Padrão: seg a sex 8h às 18h, sábado 8h às 12h, domingo fechado. Feriados fechados.
+   A Rauana ajusta um dia específico (abrir, fechar ou mudar horários). */
 const GRADE_INI = 7 * 60, GRADE_FIM = 20 * 60 + 30;
 function gradeHoras() { const h = []; for (let m = GRADE_INI; m <= GRADE_FIM; m += 30) h.push(pad(Math.floor(m / 60)) + ':' + pad(m % 60)); return h; }
-const livresDoDia = dia => st.livres.filter(h => diaKey(new Date(h.inicio)) === dia);
+function horasPadrao(dia) { const w = new Date(dia + 'T12:00').getDay(); if (w === 0) return []; const fim = w === 6 ? 11 * 60 + 30 : 17 * 60 + 30, h = []; for (let m = 8 * 60; m <= fim; m += 30) h.push(pad(Math.floor(m / 60)) + ':' + pad(m % 60)); return h; }
+const especialDe = dia => st.especiais.find(x => x.dia === dia);
+const feriadoDe = dia => st.feriados.find(x => x.dia === dia);
+function horasDoDia(dia) { const e = especialDe(dia); if (e) return e.horas; if (feriadoDe(dia)) return []; return horasPadrao(dia); }
 function ocupacao(dia, hora) {
-  const t = paraISO(dia, hora), ini = new Date(t).getTime(), fim = ini + 30 * 60e3;
+  const ini = new Date(paraISO(dia, hora)).getTime(), fim = ini + 30 * 60e3;
   for (const pl of st.planos) {
     if (pl.status !== 'ativo') continue;
     const dur = durNome(pl.procedimento) * 60e3;
@@ -510,45 +517,49 @@ function ocupacao(dia, hora) {
   for (const pd of st.pedidos) { const pl = st.planos.find(x => x.id === pd.plano_id); if (!pl) continue; const a = new Date(pd.data_hora).getTime(), dur = durNome(pl.procedimento) * 60e3; if (a < fim && a + dur > ini) return { tipo: 'pedido', nome: primeiro(paciente(pl.paciente_id).nome) }; }
   return null;
 }
+const mesmoConjunto = (a, b) => a.length === b.length && a.every(x => b.includes(x));
 function vHorarios() {
   const H = st.hor || (st.hor = { dia: diaKey(new Date()), mes: null, sel: null });
   const base = new Date(H.dia + 'T12:00'); if (!H.mes) H.mes = [base.getFullYear(), base.getMonth()];
-  if (!H.sel || H.sel.dia !== H.dia) H.sel = { dia: H.dia, horas: new Set(livresDoDia(H.dia).map(h => fHora(h.inicio))) };
+  if (!H.sel || H.sel.dia !== H.dia) H.sel = { dia: H.dia, horas: new Set(horasDoDia(H.dia)) };
   const [ano, mes] = H.mes, hoje = diaKey(new Date());
   const ini0 = new Date(ano, mes, 1).getDay(), nDias = new Date(ano, mes + 1, 0).getDate();
   const nomeMes = new Date(ano, mes, 1).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
-  const comLivre = new Set(st.livres.map(h => diaKey(new Date(h.inicio))));
   let dias = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'].map(x => `<span class="sem">${x}</span>`).join('') + '<span></span>'.repeat(ini0);
   for (let d = 1; d <= nDias; d++) {
-    const k = `${ano}-${pad(mes + 1)}-${pad(d)}`;
-    dias += `<button type="button" class="${k === H.dia ? 'on' : ''}${k === hoje ? ' hoje' : ''}${k < hoje ? ' passou' : ''}${comLivre.has(k) ? ' tem' : ''}" data-acao="hor-dia" data-v="${k}" ${k < hoje ? 'disabled' : ''}>${d}</button>`;
+    const k = `${ano}-${pad(mes + 1)}-${pad(d)}`, e = especialDe(k), fer = feriadoDe(k), fechado = !horasDoDia(k).length;
+    const cls = [k === H.dia ? 'on' : '', k === hoje ? 'hoje' : '', k < hoje ? 'passou' : '', fechado ? 'fechado' : '', e && !fechado ? 'tem' : '', fer ? 'fer' : ''].join(' ');
+    dias += `<button type="button" class="${cls}" data-acao="hor-dia" data-v="${k}" ${k < hoje ? 'disabled' : ''}>${d}</button>`;
   }
-  const salvos = new Set(livresDoDia(H.dia).map(h => fHora(h.inicio)));
-  const mudou = [...H.sel.horas].some(h => !salvos.has(h)) || [...salvos].some(h => !H.sel.horas.has(h));
-  const agora = Date.now();
+  const salvos = horasDoDia(H.dia), atual = [...H.sel.horas], mudou = !mesmoConjunto(atual, salvos);
+  const agora = Date.now(), e = especialDe(H.dia), fer = feriadoDe(H.dia);
   const chips = gradeHoras().map(h => {
     const passou = new Date(paraISO(H.dia, h)).getTime() < agora, oc = ocupacao(H.dia, h), on = H.sel.horas.has(h);
-    return `<button type="button" class="hchip ${on ? 'on' : ''} ${oc ? 'oc' : ''}" data-acao="hor-hora" data-v="${h}" ${passou ? 'disabled' : ''}><b>${h}</b>${oc ? `<small>${esc(oc.nome)}${oc.tipo === 'pedido' ? ' (pedido)' : ''}</small>` : on ? '<small>liberado</small>' : ''}</button>`;
+    return `<button type="button" class="hchip ${on ? 'on' : ''} ${oc ? 'oc' : ''}" data-acao="hor-hora" data-v="${h}" ${passou ? 'disabled' : ''}><b>${h}</b>${oc ? `<small>${esc(oc.nome)}${oc.tipo === 'pedido' ? ' (pedido)' : ''}</small>` : on ? '<small>aberto</small>' : ''}</button>`;
   }).join('');
-  const t = new Date(H.dia + 'T12:00').toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' });
+  const t = new Date(H.dia + 'T12:00').toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' }).replace('-feira', '');
+  const pad0 = horasPadrao(H.dia), descPadrao = pad0.length ? (new Date(H.dia + 'T12:00').getDay() === 6 ? 'sábado, 8h às 12h' : 'dia útil, 8h às 18h') : 'domingo, fechado';
+  const situ = e ? (e.horas.length ? 'Horário ajustado por você' : 'Fechado por você') : fer ? `Feriado: ${esc(fer.nome)} (fechado)` : `Padrão (${descPadrao})`;
+  const n = H.sel.horas.size;
   return `<div class="wrap" style="padding-bottom:30px">
-    <header class="row" style="justify-content:space-between"><a class="icon-btn plain" href="#/agenda" aria-label="Voltar">${I('back')}</a><span style="font-weight:500">Horários livres</span><span style="width:44px"></span></header>
-    <p class="ink2" style="font-size:14px;line-height:1.5">Escolha o dia e toque nos horários em que você pode atender. As clientes só conseguem pedir esses horários pela página delas.</p>
+    <header class="row" style="justify-content:space-between"><a class="icon-btn plain" href="#/agenda" aria-label="Voltar">${I('back')}</a><span style="font-weight:500">Horários de atendimento</span><span style="width:44px"></span></header>
+    <div class="card" style="background:var(--soft);font-size:14px;line-height:1.55"><b style="font-weight:600">Padrão:</b> segunda a sexta das 8h às 18h, sábado das 8h às 12h, domingo e feriados fechados. Toque num dia para mudar só aquele dia.</div>
     <section class="card stack"><div class="pk-mes"><button type="button" class="icon-btn" data-acao="hor-mes" data-v="-1" aria-label="Mês anterior">${I('back')}</button><b>${nomeMes.charAt(0).toUpperCase() + nomeMes.slice(1)}</b><button type="button" class="icon-btn" data-acao="hor-mes" data-v="1" aria-label="Próximo mês">${I('chev')}</button></div>
-      <div class="pk-grade hor-grade">${dias}</div><span class="muted" style="font-size:12px;display:flex;align-items:center;gap:6px"><i class="ponto"></i> dia com horário liberado</span></section>
-    <section class="card stack"><div class="between" style="align-items:center"><div><span class="tag">Horários</span><h2 class="s" style="font-size:22px">${esc(t.charAt(0).toUpperCase() + t.slice(1))}</h2></div><span class="badge ${H.sel.horas.size ? 'b-ok' : ''}" style="${H.sel.horas.size ? '' : 'background:var(--divider);color:var(--muted)'}">${H.sel.horas.size} ${H.sel.horas.size === 1 ? 'LIBERADO' : 'LIBERADOS'}</span></div>
+      <div class="pk-grade hor-grade">${dias}</div>
+      <div class="legenda"><span><i class="ponto"></i> horário ajustado</span><span><i class="risco">12</i> fechado</span><span><i class="ponto fer"></i> feriado</span></div></section>
+    <section class="card stack"><div class="between" style="align-items:flex-start"><div><span class="tag">${situ}</span><h2 class="s" style="font-size:22px;margin-top:2px">${esc(t.charAt(0).toUpperCase() + t.slice(1))}</h2></div><span class="badge ${n ? 'b-ok' : 'b-warn'}">${n ? `${n} ${n === 1 ? 'HORÁRIO' : 'HORÁRIOS'}` : 'FECHADO'}</span></div>
       <div class="hor-horas">${chips}</div>
-      <div class="row" style="gap:8px;flex-wrap:wrap"><button type="button" class="btn sm ghost" data-acao="hor-todos">Marcar 9h às 17h</button><button type="button" class="btn sm ghost" data-acao="hor-limpar">Limpar dia</button></div>
-      <button class="btn" data-acao="hor-salvar" ${mudou ? '' : 'disabled'}>${I('check', 2)} ${mudou ? 'Salvar horários do dia' : 'Horários salvos'}</button>
-      ${salvos.size && !mudou ? `<button class="btn ghost" data-acao="hor-copiar">Copiar para ${esc(new Date(new Date(H.dia + 'T12:00').getTime() + 7 * 864e5).toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'numeric' }))}</button>` : ''}</section>
+      <div class="row" style="gap:8px;flex-wrap:wrap">${n ? '<button type="button" class="btn sm ghost" data-acao="hor-fechar">Fechar o dia todo</button>' : ''}${(pad0.length && !fer && !mesmoConjunto(atual, pad0)) ? `<button type="button" class="btn sm ghost" data-acao="hor-padrao">Usar o padrão</button>` : ''}${!pad0.length || fer ? '<button type="button" class="btn sm ghost" data-acao="hor-abrir">Abrir 8h às 18h</button>' : ''}</div>
+      <button class="btn" data-acao="hor-salvar" ${mudou ? '' : 'disabled'}>${I('check', 2)} ${mudou ? 'Salvar este dia' : 'Salvo'}</button>
+      ${e && !mudou ? '<button class="btn ghost" data-acao="hor-desfazer">Desfazer ajuste (voltar ao padrão)</button>' : ''}
+      ${fer ? `<button class="btn ghost" data-acao="hor-tirar-feriado">${I('trash')} Não é feriado</button>` : `<button class="btn ghost" data-acao="hor-feriado">Marcar como feriado</button>`}</section>
+    ${st.feriados.length ? `<section class="stack"><h2 class="s" style="font-size:20px">Próximos feriados</h2><div class="card" style="padding:4px 16px">${st.feriados.slice(0, 8).map(f => `<button class="fer-lin" data-acao="hor-dia" data-v="${f.dia}"><span>${esc(f.nome)}</span><small>${new Date(f.dia + 'T12:00').toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit' })}${especialDe(f.dia) && especialDe(f.dia).horas.length ? ' · aberto' : ''}</small></button>`).join('')}</div></section>` : ''}
   </div>`;
 }
-async function salvarHorariosDia(dia, horas) {
-  const atuais = livresDoDia(dia), querem = new Set(horas);
-  const tirar = atuais.filter(h => !querem.has(fHora(h.inicio))).map(h => h.id);
-  const por = [...querem].filter(h => !atuais.some(a => fHora(a.inicio) === h)).map(h => ({ inicio: paraISO(dia, h) }));
-  if (tirar.length) { const r = await sb.from('horarios_livres').delete().in('id', tirar); if (r.error) throw r.error; }
-  if (por.length) { const r = await sb.from('horarios_livres').upsert(por, { onConflict: 'inicio', ignoreDuplicates: true }); if (r.error) throw r.error; }
+async function salvarDia(dia, horas) {
+  const ord = [...horas].sort(), padrao = feriadoDe(dia) ? [] : horasPadrao(dia);
+  if (mesmoConjunto(ord, padrao)) { const r = await sb.from('dias_especiais').delete().eq('dia', dia); if (r.error) throw r.error; return; }
+  const r = await sb.from('dias_especiais').upsert({ dia, horas: ord, atualizado_em: new Date().toISOString() }, { onConflict: 'dia' }); if (r.error) throw r.error;
 }
 
 function vAgenda() {
@@ -559,9 +570,9 @@ function vAgenda() {
   const grupos = {}; itens.forEach(x => { const k = diaKey(new Date(x.s.data_hora)); (grupos[k] = grupos[k] || []).push(x); });
   const hojeK = diaKey(new Date()), amanhaK = diaKey(somaDias(new Date(), 1));
   const tit = k => { const d = new Date(k + 'T12:00'); const t = d.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' }); return k === hojeK ? 'Hoje, ' + t.split(', ')[1] : k === amanhaK ? 'Amanhã, ' + t.split(', ')[1] : t.charAt(0).toUpperCase() + t.slice(1); };
-  const abertos = st.livres.filter(h => new Date(h.inicio) > new Date()).length;
+  const ajustes = st.especiais.length, prxFer = st.feriados[0];
   return `<div class="wrap"><div class="between" style="align-items:center"><h1 class="t">Agenda</h1></div><p class="ink2" style="font-size:14px;margin-top:-10px">Próximas 3 semanas</p>
-    <a class="card row" href="#/horarios" style="text-decoration:none;color:inherit;background:var(--soft)"><span class="av" style="background:var(--card);color:var(--ink)">${I('clock')}</span><div style="flex:1;min-width:0"><b style="font-weight:500">Horários livres</b><div class="ink2" style="font-size:13px">${abertos ? `${abertos} ${abertos === 1 ? 'horário aberto' : 'horários abertos'} para as clientes` : 'Libere dias e horários para as clientes escolherem'}</div></div>${I('chev')}</a>
+    <a class="card row" href="#/horarios" style="text-decoration:none;color:inherit;background:var(--soft)"><span class="av" style="background:var(--card);color:var(--ink)">${I('clock')}</span><div style="flex:1;min-width:0"><b style="font-weight:500">Horários de atendimento</b><div class="ink2" style="font-size:13px">Seg a sex 8h às 18h · sáb 8h às 12h${ajustes ? ` · ${ajustes} ${ajustes === 1 ? 'dia ajustado' : 'dias ajustados'}` : ''}</div></div>${I('chev')}</a>
     ${Object.keys(grupos).length ? Object.keys(grupos).map(k => `<section class="stack"><h2 class="s" style="font-size:20px">${esc(tit(k))}</h2>${grupos[k].map(x => itemSessao(x.pl, x.s)).join('')}</section>`).join('') : '<div class="empty">Nenhuma sessão agendada nas próximas semanas.</div>'}
     ${semData.length ? `<section class="stack"><h2 class="s" style="font-size:20px">Próxima sessão sem data</h2>${semData.map(pl => { const p = paciente(pl.paciente_id); const s = info(pl).proxima; return `<a class="item" href="#/plano/${pl.id}">${av(p.nome, p.foto)}<div class="txt"><b>${esc(p.nome)}</b><span>${esc(pl.procedimento)} · sessão ${s.numero} de ${pl.total_sessoes}</span></div>${I('chev')}</a>`; }).join('')}</section>` : ''}</div>`;
 }
@@ -875,18 +886,27 @@ document.addEventListener('click', async e => {
   if (a === 'menu-plano') return sheetMenuPlano(id);
   if (a && a.startsWith('hor-')) {
     const H = st.hor, y = window.scrollY, redesenha = () => { render(); window.scrollTo(0, y); };
-    if (a === 'hor-dia') { H.dia = el.dataset.v; return redesenha(); }
+    if (a === 'hor-dia') { H.dia = el.dataset.v; const d = new Date(H.dia + 'T12:00'); H.mes = [d.getFullYear(), d.getMonth()]; H.sel = null; render(); if (el.classList.contains('fer-lin')) window.scrollTo(0, 0); else window.scrollTo(0, y); return; }
     if (a === 'hor-mes') { const d = new Date(H.mes[0], H.mes[1] + Number(el.dataset.v), 1); H.mes = [d.getFullYear(), d.getMonth()]; return redesenha(); }
     if (a === 'hor-hora') { const v = el.dataset.v; if (H.sel.horas.has(v)) H.sel.horas.delete(v); else H.sel.horas.add(v); return redesenha(); }
-    if (a === 'hor-todos') { gradeHoras().filter(h => h >= '09:00' && h <= '17:00' && new Date(paraISO(H.dia, h)).getTime() > Date.now()).forEach(h => H.sel.horas.add(h)); return redesenha(); }
-    if (a === 'hor-limpar') { H.sel.horas.clear(); return redesenha(); }
-    if (a === 'hor-salvar') { const dia = H.dia, horas = [...H.sel.horas]; if (await salvar(() => salvarHorariosDia(dia, horas), horas.length ? 'Horários salvos.' : 'Dia sem horários livres.')) { H.sel = null; redesenha(); } return; }
-    if (a === 'hor-copiar') {
-      const prox = diaKey(new Date(new Date(H.dia + 'T12:00').getTime() + 7 * 864e5)), horas = livresDoDia(H.dia).map(h => fHora(h.inicio));
-      const rows = horas.map(h => ({ inicio: paraISO(prox, h) }));
-      if (await salvar(async () => { const r = await sb.from('horarios_livres').upsert(rows, { onConflict: 'inicio', ignoreDuplicates: true }); if (r.error) throw r.error; }, 'Copiado para a próxima semana.')) {
-        H.dia = prox; H.sel = null; const d = new Date(prox + 'T12:00'); H.mes = [d.getFullYear(), d.getMonth()]; redesenha();
-      }
+    if (a === 'hor-padrao') { H.sel.horas = new Set(horasPadrao(H.dia)); return redesenha(); }
+    if (a === 'hor-abrir') { H.sel.horas = new Set(gradeHoras().filter(h => h >= '08:00' && h <= '17:30')); return redesenha(); }
+    if (a === 'hor-fechar') {
+      const oc = gradeHoras().map(h => ocupacao(H.dia, h)).filter(Boolean);
+      if (!await confirmar({ titulo: 'Fechar o dia todo?', texto: `As clientes não vão conseguir pedir horário neste dia.${oc.length ? ` ${negrito('Atenção:')} já tem sessão marcada nesse dia. Ela continua na agenda.` : ''}`, ok: 'Fechar o dia', perigo: true, icone: 'alert' })) return;
+      const dia = H.dia; if (await salvar(() => salvarDia(dia, []), 'Dia fechado.')) { H.sel = null; redesenha(); } return;
+    }
+    if (a === 'hor-salvar') { const dia = H.dia, horas = [...H.sel.horas]; if (await salvar(() => salvarDia(dia, horas), horas.length ? 'Horários do dia salvos.' : 'Dia fechado.')) { H.sel = null; redesenha(); } return; }
+    if (a === 'hor-desfazer') { const dia = H.dia; if (await salvar(async () => { const r = await sb.from('dias_especiais').delete().eq('dia', dia); if (r.error) throw r.error; }, 'Dia voltou ao padrão.')) { H.sel = null; redesenha(); } return; }
+    if (a === 'hor-tirar-feriado') {
+      const f = feriadoDe(H.dia); if (!await confirmar({ titulo: 'Não é feriado?', texto: `${negrito(f.nome)} sai da lista e o dia volta ao horário padrão.`, ok: 'Tirar feriado', icone: 'undo' })) return;
+      const dia = H.dia; if (await salvar(async () => { const r = await sb.from('feriados').delete().eq('dia', dia); if (r.error) throw r.error; }, 'Feriado removido.')) { H.sel = null; redesenha(); } return;
+    }
+    if (a === 'hor-feriado') {
+      abrirSheet(`<div class="between" style="align-items:flex-start"><h2 class="s" style="font-size:27px">Marcar feriado</h2><button class="icon-btn plain" data-acao="fechar" aria-label="Fechar">${I('x')}</button></div>
+        <form data-form="feriado" data-dia="${H.dia}" class="stack" style="gap:14px"><label class="f">Nome do feriado<input class="inp" name="nome" placeholder="Ex.: Aniversário da cidade" maxlength="60" required></label>
+        <p class="muted" style="font-size:13px">O dia fica fechado para as clientes. Se quiser atender mesmo assim, é só abrir os horários depois.</p>
+        <button class="btn" type="submit">Salvar feriado</button></form>`);
       return;
     }
   }
@@ -1129,6 +1149,12 @@ async function enviarForm(tipo, form) {
       await upd('sessoes', { data_hora: nova, status: 'agendada' }, s.id);
       await upd('pedidos_horario', { status: 'alterado', respondido_em: new Date().toISOString() }, ped.id);
     })) avisoCliente(st.planos.find(x => x.id === pl.id), s.numero, nova, ped.data_hora);
+    return;
+  }
+  if (tipo === 'feriado') {
+    const dia = form.dataset.dia, nome = v('nome').replace(/\s+/g, ' ');
+    if (nome.length < 2) return toast('Escreva o nome do feriado.');
+    if (await salvar(async () => { const r = await sb.from('feriados').upsert({ dia, nome }, { onConflict: 'dia' }); if (r.error) throw r.error; }, 'Feriado salvo.')) { st.hor.sel = null; fecharSheet(); render(); }
     return;
   }
   if (tipo === 'meu-nome') {
