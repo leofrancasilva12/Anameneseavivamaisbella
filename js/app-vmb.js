@@ -82,11 +82,12 @@ function desenharPicker(rolarHora) {
     const k = `${ano}-${pad(mes + 1)}-${pad(d)}`;
     dias += `<button type="button" class="${k === PK.dia ? 'on' : ''}${k === hoje ? ' hoje' : ''}${k < hoje ? ' passou' : ''}" data-acao="pk-dia" data-v="${k}" aria-label="${d} de ${nomeMes}">${d}</button>`;
   }
-  const horas = []; for (let m = 6 * 60; m <= 21 * 60; m += 15) horas.push(pad(Math.floor(m / 60)) + ':' + pad(m % 60));
+  const horas = []; for (let m = 6 * 60; m <= 21 * 60; m += 30) horas.push(pad(Math.floor(m / 60)) + ':' + pad(m % 60));
   if (!horas.includes(PK.hora)) { horas.push(PK.hora); horas.sort(); }
   const tit = PK.dia ? (t => t.charAt(0).toUpperCase() + t.slice(1))(new Date(PK.dia + 'T12:00').toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })).replace('-feira', '') : 'Escolha o dia';
   const rolagem = $('#pk-horas') ? $('#pk-horas').scrollLeft : 0;
-  $('#picker').innerHTML = `<div class="pk-bg" data-acao="pk-fundo"><div class="sheet" role="dialog" aria-modal="true" aria-label="Escolher data e horário"><div class="grip"></div>
+  let caixa = $('#picker'); if (!caixa) { caixa = document.createElement('div'); caixa.id = 'picker'; document.body.appendChild(caixa); }
+  caixa.innerHTML = `<div class="pk-bg" data-acao="pk-fundo"><div class="sheet" role="dialog" aria-modal="true" aria-label="Escolher data e horário"><div class="grip"></div>
     <div class="between" style="align-items:flex-start"><div><span class="tag">Data e horário</span><h2 class="s" style="font-size:24px;margin-top:2px">${tit}</h2>${PK.dia ? `<span class="ink2" style="font-size:14px">às ${PK.hora}</span>` : ''}</div><button type="button" class="icon-btn plain" data-acao="pk-fechar" aria-label="Fechar">${I('x')}</button></div>
     <div class="pk-mes"><button type="button" class="icon-btn" data-acao="pk-mes" data-v="-1" aria-label="Mês anterior">${I('back')}</button><b>${nomeMes.charAt(0).toUpperCase() + nomeMes.slice(1)}</b><button type="button" class="icon-btn" data-acao="pk-mes" data-v="1" aria-label="Próximo mês">${I('chev')}</button></div>
     <div class="pk-grade">${dias}</div>
@@ -97,7 +98,7 @@ function desenharPicker(rolarHora) {
   if (rolarHora) { const on = faixa.querySelector('.on'); if (on) faixa.scrollLeft = on.offsetLeft - faixa.clientWidth / 2 + on.offsetWidth / 2; }
   else faixa.scrollLeft = rolagem;
 }
-function fecharPicker() { $('#picker').innerHTML = ''; PK = null; }
+function fecharPicker() { const c = $('#picker'); if (c) c.innerHTML = ''; PK = null; }
 function aplicarPicker(dia) {
   const c = PK.campo, sp = c.querySelector('.campo-dh span');
   c.querySelector('[name="dia"]').value = dia; c.querySelector('[name="hora"]').value = PK.hora;
