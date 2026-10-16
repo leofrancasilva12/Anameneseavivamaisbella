@@ -238,12 +238,27 @@
         </button>
       </div>
 
-      <!-- STEP AGENDAR — logo depois de enviar a ficha -->
-      <div class="step" id="stepAgendar">
+      <!-- STEP PACOTE — logo depois de enviar a ficha: quantas sessões e o valor -->
+      <div class="step" id="stepPacote">
         <div class="confirm-header">
           <div class="confirm-icon"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></div>
           <h2>Ficha enviada!</h2>
-          <p>Agora escolha o melhor dia e horário para a sua primeira sessão. A Rauana confirma pelo WhatsApp.</p>
+          <p>Agora escolha quantas sessões você quer fazer. O valor aparece na hora.</p>
+        </div>
+        <div id="pacote"></div>
+        <div class="btn-row">
+          <button class="btn-back" onclick="pularPacote()">Decido depois</button>
+          <button class="btn-next" id="btnPacote" onclick="confirmarPacote()" disabled><span>Escolher horário</span>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></button>
+        </div>
+      </div>
+
+      <!-- STEP AGENDAR — depois de escolher as sessões -->
+      <div class="step" id="stepAgendar">
+        <div class="confirm-header">
+          <div class="confirm-icon"><svg viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg></div>
+          <h2>Primeira sessão</h2>
+          <p>Escolha o melhor dia e horário. A Rauana confirma pelo WhatsApp.</p>
         </div>
         <div id="agenda"></div>
         <div class="btn-row agenda-bts">

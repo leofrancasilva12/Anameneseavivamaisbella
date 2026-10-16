@@ -879,3 +879,34 @@ header .header-servicos {
 .fim-pedido small{display:block;font-size:11px;letter-spacing:.2em;color:var(--warntext);font-weight:600;margin-bottom:4px}
 .fim-pedido b{font-family:'Cormorant Garamond',serif;font-size:1.4rem}
 .assinatura-final{text-align:center;font-size:10px;letter-spacing:.3em;text-transform:uppercase;color:var(--muted);margin-top:26px}
+
+/* Quantas sessões (depois de enviar a ficha) */
+.pc-serv{background:var(--card,#FAF7F2);border-radius:20px;padding:16px;display:flex;flex-direction:column;gap:12px;margin-bottom:14px;border:1px solid var(--line,#E2D8CC)}
+.pc-cab{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+.pc-cab b{font-family:'Cormorant Garamond',serif;font-size:1.45rem;font-weight:600;color:var(--ink);line-height:1.1}
+.pc-cab span{font-size:12.5px;color:var(--muted);white-space:nowrap;font-family:'Jost',sans-serif}
+.pc-tit{font-size:11px;font-weight:600;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);font-family:'Jost',sans-serif}
+.pc-qtd{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
+.pc-qtd button{min-height:52px;border-radius:16px;border:1px solid var(--chip);background:#fff;color:var(--ink2);font-family:'Jost',sans-serif;font-size:18px;font-weight:500;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.05;padding:0}
+.pc-qtd button small{font-size:10px;letter-spacing:.02em;color:var(--muted);font-weight:400}
+.pc-qtd button.on{background:var(--ink);border-color:var(--ink);color:var(--onink)}
+.pc-qtd button.on small{color:#E6D6C4}
+.pc-ou{display:flex;align-items:center;gap:10px;font-size:12px;color:var(--muted);letter-spacing:.12em;font-family:'Jost',sans-serif}
+.pc-ou::before,.pc-ou::after{content:"";flex:1;height:1px;background:var(--line,#E2D8CC)}
+.pc-plano{position:relative;display:flex;align-items:center;gap:14px;width:100%;text-align:left;border-radius:18px;border:1.5px solid var(--chip);background:linear-gradient(135deg,#F6EDE3,#EFE3D4);padding:14px 16px;margin-top:6px;cursor:pointer;font-family:'Jost',sans-serif;color:var(--ink)}
+.pc-plano .n{width:56px;height:56px;flex-shrink:0;border-radius:28px;background:var(--ink);color:var(--onink);display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:'Cormorant Garamond',serif;font-size:24px;font-weight:600;line-height:.9}
+.pc-plano .n small{font-family:'Jost',sans-serif;font-size:7px;letter-spacing:.06em;font-weight:500}
+.pc-plano b{display:block;font-size:16px;font-weight:600}
+.pc-plano span{font-size:13px;color:var(--ink2)}
+.pc-plano s{color:var(--muted)}
+.pc-plano .selo{position:absolute;top:-10px;right:14px;background:#9A3F1E;color:#fff;font-size:10.5px;font-weight:600;letter-spacing:.08em;border-radius:10px;padding:4px 9px}
+.pc-plano.on{border-color:var(--ink);box-shadow:0 0 0 2px var(--ink) inset;background:linear-gradient(135deg,#F1E2CF,#EAD6C0)}
+.pc-preco{display:flex;justify-content:space-between;align-items:center;gap:10px;background:var(--bg,#EEE8E0);border-radius:14px;padding:10px 14px;font-size:13px;color:var(--ink2);font-family:'Jost',sans-serif}
+.pc-preco b{font-family:'Cormorant Garamond',serif;font-size:1.5rem;color:var(--ink);font-weight:600;white-space:nowrap}
+.pc-total{background:var(--ink);color:var(--onink);border-radius:20px;padding:14px 18px;display:flex;justify-content:space-between;align-items:center;gap:10px;margin:6px 0 10px;box-shadow:0 10px 24px rgba(59,38,22,.2);font-family:'Jost',sans-serif}
+.pc-total small{display:block;font-size:12px;color:#E6D6C4;letter-spacing:.04em}
+.pc-total b{font-family:'Cormorant Garamond',serif;font-size:2rem;font-weight:600;line-height:1;white-space:nowrap}
+.pc-total b i{font-family:'Jost',sans-serif;font-size:12px;font-style:normal;font-weight:400;color:#E6D6C4}
+.pc-total>span{font-size:12px;color:#E6D6C4;text-align:right;line-height:1.35}
+.pc-nota{font-size:12.5px;color:var(--muted);text-align:center;line-height:1.5;margin:0 0 6px;font-family:'Jost',sans-serif}
+.fim-pac{display:block;font-size:.95rem;line-height:1.6;color:var(--ink)}

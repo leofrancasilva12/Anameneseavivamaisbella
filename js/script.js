@@ -677,7 +677,7 @@
     try {
       await gravarFichaNoBanco();
       limparRascunho();
-      abrirAgenda();
+      abrirPacote();
     } catch (e) {
       console.warn('Ficha não gravada:', e);
       showToast('Não foi possível enviar agora. Verifique sua internet e tente de novo.');
@@ -785,6 +785,69 @@
     } finally { AG.enviando = false; if (document.getElementById('stepAgendar').classList.contains('active')) desenharAgenda(); }
   }
   function combinarDepois() { finalizar(false); }
+
+  /* ─── QUANTAS SESSÕES (logo depois de enviar a ficha) ───
+     Preços vêm da aba Procedimentos do app. O banco recalcula tudo ao salvar. */
+  const PC = { itens: [], escolha: null, salvando: false };
+  const reais = n => 'R$ ' + Number(n).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const totalItem = it => !it.sel || it.valor == null ? null : it.sel === 10 ? (it.valor10 != null ? it.valor10 : it.valor * 10) : it.valor * it.sel;
+  async function abrirPacote() {
+    mostrarStep('stepPacote');
+    document.getElementById('sectionName').textContent = 'Sessões';
+    const servs = servicosEscolhidos().map(x => x.nome);
+    PC.itens = servs.map(nome => ({ nome, valor: null, valor10: null, sel: null }));
+    PC.escolha = null;
+    document.getElementById('pacote').innerHTML = '<p class="ag-vazio">Carregando os valores...</p>';
+    try {
+      const precos = await rpc('precos_ficha', {});
+      PC.itens.forEach(it => {
+        const pr = (precos || []).find(x => x.nome.trim().toLowerCase() === it.nome.trim().toLowerCase());
+        if (pr) { it.nome = pr.nome; it.valor = pr.valor != null ? Number(pr.valor) : null; it.valor10 = pr.valor_plano10 != null ? Number(pr.valor_plano10) : null; }
+      });
+    } catch (e) { /* sem internet: mostra sem valores */ }
+    if (!PC.itens.length) return abrirAgenda();
+    desenharPacote();
+  }
+  function desenharPacote() {
+    const html = PC.itens.map((it, i) => {
+      const cheio = it.valor != null ? it.valor * 10 : null, plano = it.valor10 != null ? it.valor10 : cheio;
+      const economia = cheio != null && it.valor10 != null && it.valor10 < cheio ? cheio - it.valor10 : 0;
+      const qtd = [1, 2, 3, 4, 5].map(n => `<button type="button" class="${it.sel === n ? 'on' : ''}" onclick="pcEscolher(${i},${n})" aria-pressed="${it.sel === n}">${n}<small>${n === 1 ? 'sessão' : 'sessões'}</small></button>`).join('');
+      const t = totalItem(it);
+      return `<div class="pc-serv"><div class="pc-cab"><b>${escapeHtml(it.nome)}</b><span>${it.valor != null ? reais(it.valor) + ' por sessão' : 'valor a combinar'}</span></div>
+        <div class="pc-tit">Quantas sessões?</div><div class="pc-qtd">${qtd}</div>
+        <div class="pc-ou">OU</div>
+        <button type="button" class="pc-plano${it.sel === 10 ? ' on' : ''}" onclick="pcEscolher(${i},10)" aria-pressed="${it.sel === 10}"><span class="selo">${economia ? 'ECONOMIZE ' + reais(economia).replace(',00', '') : 'MAIS RESULTADO'}</span><span class="n">10<small>SESSÕES</small></span>
+          <span style="flex:1"><b>Plano de tratamento</b><span>10 sessões${plano != null ? ' · ' + (economia ? `<s>${reais(cheio)}</s> ` : '') + `<b style="display:inline;font-size:13px;white-space:nowrap">${reais(plano)}</b>` : ''}</span></span></button>
+        ${it.sel ? `<div class="pc-preco"><span>${it.sel === 10 ? 'Plano de 10 sessões' : `${it.sel} ${it.sel === 1 ? 'sessão' : 'sessões'}${it.valor != null ? ' × ' + reais(it.valor) : ''}`}</span><b>${t != null ? reais(t) : 'a combinar'}</b></div>` : ''}</div>`;
+    }).join('');
+    const escolhidos = PC.itens.filter(it => it.sel), todos = escolhidos.length === PC.itens.length;
+    const total = escolhidos.reduce((a, it) => a + (totalItem(it) || 0), 0), ns = escolhidos.reduce((a, it) => a + it.sel, 0);
+    const semValor = escolhidos.some(it => it.valor == null);
+    document.getElementById('pacote').innerHTML = html + (escolhidos.length ? `<div class="pc-total"><div><small>TOTAL · ${ns} ${ns === 1 ? 'SESSÃO' : 'SESSÕES'}</small><b>${reais(total)}${semValor ? '<i> + a combinar</i>' : ''}</b></div><span>valor de<br>referência</span></div>
+      <p class="pc-nota">Os valores são de referência. A Rauana confirma tudo com você pelo WhatsApp.</p>` : '');
+    const b = document.getElementById('btnPacote');
+    b.disabled = !todos || PC.salvando;
+    b.querySelector('span').textContent = PC.salvando ? 'Salvando...' : todos ? 'Escolher horário' : (PC.itens.length > 1 ? 'Escolha em cada serviço' : 'Escolha as sessões');
+  }
+  function pcEscolher(i, n) { PC.itens[i].sel = PC.itens[i].sel === n ? null : n; desenharPacote(); }
+  async function confirmarPacote() {
+    if (PC.salvando || PC.itens.some(it => !it.sel)) return;
+    PC.salvando = true; desenharPacote();
+    try {
+      PC.escolha = await rpc('escolher_pacote_ficha', { p_codigo: fichaGravada.codigo, p_pacote: PC.itens.map(it => ({ servico: it.nome, sessoes: it.sel })) });
+    } catch (e) {
+      PC.escolha = null;
+      if (e.codigo === 'ficha_expirada') { PC.salvando = false; showToast(ERROS_AG.ficha_expirada); return finalizar(false); }
+      showToast('Não foi possível salvar sua escolha agora. Você pode combinar com a Rauana.');
+    } finally { PC.salvando = false; }
+    abrirAgenda();
+  }
+  function pularPacote() { PC.escolha = null; abrirAgenda(); }
+  function textoPacote() {
+    if (!PC.escolha || !PC.escolha.length) return '';
+    return PC.escolha.map(x => `${x.plano ? 'Plano de 10 sessões' : x.sessoes + (x.sessoes === 1 ? ' sessão' : ' sessões')} de ${escapeHtml(x.servico)}${x.total != null ? ' · ' + reais(x.total) : ''}`).join('<br>');
+  }
   function finalizar(comPedido) {
     const nome = primeiroNome();
     document.getElementById('fimTitulo').textContent = nome ? `Obrigada, ${nome}!` : 'Obrigada!';
@@ -792,9 +855,10 @@
       ? 'Sua ficha e seu pedido de horário chegaram para a Rauana. Ela vai confirmar o horário pelo WhatsApp.'
       : 'Sua ficha chegou para a Rauana. Ela vai falar com você pelo WhatsApp para combinar o melhor horário.')
       + ' Obrigada pela confiança em cuidar de você com a Viva Mais Bella. Será um prazer te receber!';
-    const box = document.getElementById('fimPedido');
-    box.hidden = !comPedido;
-    if (comPedido) box.innerHTML = `<small>SEU PEDIDO</small><b>${escapeHtml(dataLonga(AG.dia))} às ${AG.hora}</b>`;
+    const box = document.getElementById('fimPedido'), pac = textoPacote();
+    box.hidden = !comPedido && !pac;
+    box.innerHTML = (comPedido ? `<small>SEU PEDIDO</small><b>${escapeHtml(dataLonga(AG.dia))} às ${AG.hora}</b>` : '')
+      + (pac ? `<small${comPedido ? ' style="margin-top:10px"' : ''}>SUAS SESSÕES</small><span class="fim-pac">${pac}</span>` : '');
     document.getElementById('sectionName').textContent = 'Concluído';
     document.querySelector('.progress-wrap').classList.add('concluido');
     mostrarStep('stepFim');
